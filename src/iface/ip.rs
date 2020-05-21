@@ -47,6 +47,14 @@ use socket::UdpSocket;
 use socket::TcpSocket;
 use super::Routes;
 
+enum_with_unknown! {
+    /// Ethernet protocol type.
+    pub enum IpType(u16) {
+        Ipv4 = 0x0800,
+        Ipv6 = 0x86DD
+    }
+}
+
 /// Configuration for the interface. This is data that can't change
 /// as a result of processing packets (as opposed to State).
 /// 
