@@ -11,7 +11,9 @@ use time::Instant;
 /// A virtual Ethernet interface.
 #[derive(Debug)]
 pub struct VirtualTapInterface {
-    lower:  Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+    //lower:  Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+    //put lower with transmit capabilities here? I think no lower is needed, only internally used
+    //lower:
     mtu:    usize
 }
 
@@ -28,11 +30,12 @@ impl VirtualTapInterface {
     /// no special privileges are needed. Otherwise, this requires superuser privileges
     /// or a corresponding capability set on the executable.
     pub fn new(name: &str) -> io::Result<VirtualTapInterface> {
-        let mut lower = sys::VirtualTapInterfaceDesc::new(name)?;
-        lower.attach_interface()?;
-        let mtu = lower.interface_mtu()?;
+        //let mut lower = sys::VirtualTapInterfaceDesc::new(name)?;
+        //lower.attach_interface()?;
+        //todo: 1500 is the right size?
+        let mtu 1500;//= lower.interface_mtu()?;
         Ok(VirtualTapInterface {
-            lower: Rc::new(RefCell::new(lower)),
+            //lower: Rc::new(RefCell::new(lower)),
             mtu:   mtu
         })
     }
@@ -50,7 +53,7 @@ impl<'a> Device<'a> for VirtualTapInterface {
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
-        let mut lower = self.lower.borrow_mut();
+        //let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; self.mtu];
         match lower.recv(&mut buffer[..]) {
             Ok(size) => {
@@ -88,17 +91,19 @@ impl phy::RxToken for RxToken {
 
 #[doc(hidden)]
 pub struct TxToken {
-    lower: Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+    //lower: Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+    //put lower here with send capabilities?
+    //lower:
 }
 
 impl phy::TxToken for TxToken {
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> Result<R>
         where F: FnOnce(&mut [u8]) -> Result<R>
     {
-        let mut lower = self.lower.borrow_mut();
+        //let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; len];
         let result = f(&mut buffer);
-        lower.send(&buffer[..]).unwrap();
+        //lower.send(&buffer[..]).unwrap();
         result
     }
 }
