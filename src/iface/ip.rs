@@ -46,6 +46,17 @@ use socket::UdpSocket;
 #[cfg(feature = "socket-tcp")]
 use socket::TcpSocket;
 use super::Routes;
+use byteorder::{ByteOrder, NetworkEndian};
+
+
+mod field {
+    use wire::field::*;
+
+    pub const DESTINATION: Field =  0..6;
+    pub const SOURCE:      Field =  6..12;
+    pub const IPTYPE:   Field = 12..14;
+    pub const PAYLOAD:     Rest  = 14..;
+}
 
 enum_with_unknown! {
     /// Ethernet protocol type.
@@ -305,6 +316,14 @@ impl<'e> State<'e> {
 }
 
 impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
+
+    #[inline]
+    pub fn iptype<'frame, T: AsRef<[u8]>>(frame: &'frame T) -> IpType {
+        let data = frame;
+        //TODO: fix IPTYPE field
+        let raw = NetworkEndian::read_u16(&data[field::IPTYPE]);
+        return IpType::from(raw);
+    }
 
     pub fn socket_egress(&mut self, lower: &mut impl LowerDispatcher, sockets: &mut SocketSet, timestamp: Instant) -> Result<bool> {
         let _caps = self.state.device_capabilities.clone();

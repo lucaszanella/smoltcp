@@ -578,20 +578,21 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                        Result<Option<Packet<'frame>>>
     {
         //match types here
-
-        //use, directly, ip.process_ipvX insteaf of self.process_ipvX?
-        #[cfg(feature = "proto-ipv4")]
-        EthernetProtocol::Ipv4 =>{
-            let ipv4_packet = Ipv4Packet::new_checked(frame)?;
-            self.ip.process_ipv4(ip, sockets, timestamp, &ipv4_packet);
-        },
-        #[cfg(feature = "proto-ipv6")]
-        EthernetProtocol::Ipv6 => {
-            let ipv6_packet = Ipv6Packet::new_checked(frame)?;
-            self.ip.process_ipv6(ip, sockets, timestamp, &ipv6_packet);
-        },
-        // Drop all other traffic.
-        _ => Err(Error::Unrecognized),
+        match ip.iptype(&frame) {
+            //use, directly, ip.process_ipvX insteaf of self.process_ipvX?
+            #[cfg(feature = "proto-ipv4")]
+            EthernetProtocol::Ipv4 =>{
+                let ipv4_packet = Ipv4Packet::new_checked(frame)?;
+                self.ip.process_ipv4(ip, sockets, timestamp, &ipv4_packet);
+            },
+            #[cfg(feature = "proto-ipv6")]
+            EthernetProtocol::Ipv6 => {
+                let ipv6_packet = Ipv6Packet::new_checked(frame)?;
+                self.ip.process_ipv6(ip, sockets, timestamp, &ipv6_packet);
+            },
+            // Drop all other traffic.
+            _ => Err(Error::Unrecognized),
+        }
     }
     /*
     fn process_ethernet<'frame, T: AsRef<[u8]>>
