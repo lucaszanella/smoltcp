@@ -505,6 +505,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
                 EthernetProtocol::Ipv6 =>
                 self.process_ipv6(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip)),
                 */
+                /*
                 p.process_ethernet(&mut ip, sockets, timestamp, &frame).map_err(|err| {
                     net_debug!("cannot process ingress packet: {}", err);
                     net_debug!("packet dump follows:\n{}",
@@ -515,6 +516,24 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
                         Some(packet) => {
                             processed_any = true;
                             p.dispatch(tx_token, timestamp, packet).map_err(|err| {
+                                net_debug!("cannot dispatch response packet: {}", err);
+                                err
+                            })
+                        }
+                        None => Ok(())
+                    }
+                })
+                */
+                p.process_ip_payload(&mut ip, sockets, timestamp, &frame).map_err(|err| {
+                    net_debug!("cannot process ingress packet: {}", err);
+                    //net_debug!("packet dump follows:\n{}",
+                    //           PrettyPrinter::<EthernetFrame<&[u8]>>::new("", &frame));
+                    err
+                }).and_then(|response| {
+                    match response {
+                        Some(packet) => {
+                            processed_any = true;
+                            ip.dispatch(tx_token, timestamp, packet).map_err(|err| {
                                 net_debug!("cannot dispatch response packet: {}", err);
                                 err
                             })
@@ -563,13 +582,13 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         //use, directly, ip.process_ipvX insteaf of self.process_ipvX?
         #[cfg(feature = "proto-ipv4")]
         EthernetProtocol::Ipv4 =>{
-            let ipv4_packet = Ipv4Packet::new_checked(eth_frame.payload())?;
-            self.ip.process_ipv4(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip))
+            let ipv4_packet = Ipv4Packet::new_checked(frame)?;
+            self.ip.process_ipv4(ip, sockets, timestamp, &ipv4_packet);
         },
         #[cfg(feature = "proto-ipv6")]
         EthernetProtocol::Ipv6 => {
-            let ipv6_packet = Ipv6Packet::new_checked(eth_frame.payload())?;
-            self.ip.process_ipv6(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip))
+            let ipv6_packet = Ipv6Packet::new_checked(frame)?;
+            self.ip.process_ipv6(ip, sockets, timestamp, &ipv6_packet);
         },
         // Drop all other traffic.
         _ => Err(Error::Unrecognized),
