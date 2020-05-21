@@ -48,22 +48,9 @@ use socket::TcpSocket;
 use super::Routes;
 use byteorder::{ByteOrder, NetworkEndian};
 
-
-mod field {
-    use wire::field::*;
-
-    pub const DESTINATION: Field =  0..6;
-    pub const SOURCE:      Field =  6..12;
-    pub const IPTYPE:   Field = 12..14;
-    pub const PAYLOAD:     Rest  = 14..;
-}
-
-enum_with_unknown! {
-    /// Ethernet protocol type.
-    pub enum IpType(u16) {
-        Ipv4 = 0x0800,
-        Ipv6 = 0x86DD
-    }
+pub enum IpType{
+    Ipv4,
+    Ipv6
 }
 
 /// Configuration for the interface. This is data that can't change
@@ -318,11 +305,13 @@ impl<'e> State<'e> {
 impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
 
     #[inline]
-    pub fn iptype<'frame, T: AsRef<[u8]>>(frame: &'frame T) -> IpType {
-        let data = frame;
-        //TODO: fix IPTYPE field
-        let raw = NetworkEndian::read_u16(&data[field::IPTYPE]);
-        return IpType::from(raw);
+    pub fn iptype<'frame, T: AsRef<[u8]>>(ip_packet: &'frame T) -> IpType {
+        let version = ip_packet.as_ref()[0] >> 4;
+        match version {
+            4 => IpType::Ipv4,
+            6 => IpType::Ipv6
+            //_ => 
+        }
     }
 
     pub fn socket_egress(&mut self, lower: &mut impl LowerDispatcher, sockets: &mut SocketSet, timestamp: Instant) -> Result<bool> {

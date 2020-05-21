@@ -577,157 +577,25 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                        (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
                        Result<Option<Packet<'frame>>>
     {
-        //match types here
+        let lower = &mut LowerProcessor{
+            _processor: processor!(self),
+        };
         match ip.iptype(&frame) {
-            //use, directly, ip.process_ipvX insteaf of self.process_ipvX?
             #[cfg(feature = "proto-ipv4")]
-            EthernetProtocol::Ipv4 =>{
+            IpType::Ipv4 => {
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
-                self.ip.process_ipv4(ip, sockets, timestamp, &ipv4_packet);
+                self.ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },
             #[cfg(feature = "proto-ipv6")]
-            EthernetProtocol::Ipv6 => {
+            IpType::Ipv6 => {
                 let ipv6_packet = Ipv6Packet::new_checked(frame)?;
-                self.ip.process_ipv6(ip, sockets, timestamp, &ipv6_packet);
+                self.ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet);
             },
             // Drop all other traffic.
             _ => Err(Error::Unrecognized),
         }
     }
-    /*
-    fn process_ethernet<'frame, T: AsRef<[u8]>>
-                       (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
-                       Result<Option<Packet<'frame>>>
-    {
-        let eth_frame = EthernetFrame::new_checked(frame)?;
-
-        // Ignore any packets not directed to our hardware address or any of the multicast groups.
-        if !eth_frame.dst_addr().is_broadcast() &&
-           !eth_frame.dst_addr().is_multicast() &&
-           eth_frame.dst_addr() != self.config.ethernet_addr
-        {
-            return Ok(None)
-        }
-
-        match eth_frame.ethertype() {
-            #[cfg(feature = "proto-ipv4")]
-            EthernetProtocol::Arp =>
-                self.process_arp(timestamp, &eth_frame),
-            #[cfg(feature = "proto-ipv4")]
-            EthernetProtocol::Ipv4 =>
-                self.process_ipv4(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip)),
-            #[cfg(feature = "proto-ipv6")]
-            EthernetProtocol::Ipv6 =>
-                self.process_ipv6(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip)),
-            // Drop all other traffic.
-            _ => Err(Error::Unrecognized),
-        }
-    }
-
-    #[cfg(feature = "proto-ipv4")]
-    fn process_arp<'frame, T: AsRef<[u8]>>
-                  (&mut self, timestamp: Instant, eth_frame: &EthernetFrame<&'frame T>) ->
-                  Result<Option<Packet<'frame>>>
-    {
-        let arp_packet = ArpPacket::new_checked(eth_frame.payload())?;
-        let arp_repr = ArpRepr::parse(&arp_packet)?;
-
-        match arp_repr {
-            // Respond to ARP requests aimed at us, and fill the ARP cache from all ARP
-            // requests and replies, to minimize the chance that we have to perform
-            // an explicit ARP request.
-            ArpRepr::EthernetIpv4 {
-                operation, source_hardware_addr, source_protocol_addr, target_protocol_addr, ..
-            } => {
-                if source_protocol_addr.is_unicast() && source_hardware_addr.is_unicast() {
-                    self.state.neighbor_cache.fill(source_protocol_addr.into(),
-                                             source_hardware_addr,
-                                             timestamp);
-                } else {
-                    // Discard packets with non-unicast source addresses.
-                    net_debug!("non-unicast source address");
-                    return Err(Error::Malformed)
-                }
-
-                if operation == ArpOperation::Request && self.ip_config.has_ip_addr(target_protocol_addr) {
-                    Ok(Some(Packet::Arp(ArpRepr::EthernetIpv4 {
-                        operation: ArpOperation::Reply,
-                        source_hardware_addr: self.config.ethernet_addr,
-                        source_protocol_addr: target_protocol_addr,
-                        target_hardware_addr: source_hardware_addr,
-                        target_protocol_addr: source_protocol_addr
-                    })))
-                } else {
-                    Ok(None)
-                }
-            }
-
-            _ => Err(Error::Unrecognized)
-        }
-    }
-    */
-    /*
-    #[cfg(feature = "proto-ipv6")]
-    fn process_ipv6<'frame, T: AsRef<[u8]>>
-                   (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant,
-                    eth_frame: &EthernetFrame<&'frame T>) ->
-                   Result<Option<ip::Packet<'frame>>>
-    {
-        let ipv6_packet = Ipv6Packet::new_checked(eth_frame.payload())?;
-        let ipv6_repr = Ipv6Repr::parse(&ipv6_packet)?;
-
-        if !ipv6_repr.src_addr.is_unicast() {
-            // Discard packets with non-unicast source addresses.
-            net_debug!("non-unicast source address");
-            return Err(Error::Malformed)
-        }
-
-        if eth_frame.src_addr().is_unicast() {
-            // Fill the neighbor cache from IP header of unicast frames.
-            let ip_addr = IpAddress::Ipv6(ipv6_repr.src_addr);
-            if self.ip_config.in_same_network(&ip_addr) &&
-                    self.state.neighbor_cache.lookup_pure(&ip_addr, timestamp).is_none() {
-                self.state.neighbor_cache.fill(ip_addr, eth_frame.src_addr(), timestamp);
-            }
-        }
-        
-        let lower = &mut LowerProcessor{
-            _processor: processor!(self),
-        };
-        ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet)
-    }
-
-    #[cfg(feature = "proto-ipv4")]
-    fn process_ipv4<'frame, T: AsRef<[u8]>>
-                   (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant,
-                    eth_frame: &EthernetFrame<&'frame T>) ->
-                   Result<Option<ip::Packet<'frame>>>
-    {
-        let ipv4_packet = Ipv4Packet::new_checked(eth_frame.payload())?;
-        let checksum_caps = self.state.device_capabilities.checksum.clone();
-        let ipv4_repr = Ipv4Repr::parse(&ipv4_packet, &checksum_caps)?;
-
-        if !ipv4_repr.src_addr.is_unicast() {
-            // Discard packets with non-unicast source addresses.
-            net_debug!("non-unicast source address");
-            return Err(Error::Malformed)
-        }
-
-        if eth_frame.src_addr().is_unicast() {
-            // Fill the neighbor cache from IP header of unicast frames.
-            let ip_addr = IpAddress::Ipv4(ipv4_repr.src_addr);
-            if self.ip_config.in_same_network(&ip_addr) {
-                self.state.neighbor_cache.fill(ip_addr, eth_frame.src_addr(), timestamp);
-            }
-        }
-
-        let lower = &mut LowerProcessor{
-            _processor: processor!(self),
-        };
-        ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet)
-    }
-
-    */
+    
     #[cfg(feature = "proto-ipv6")]
     fn process_ndisc<'frame>(&mut self, timestamp: Instant, ip_repr: Ipv6Repr,
                              repr: NdiscRepr<'frame>) -> Result<Option<ip::Packet<'frame>>> {
@@ -805,125 +673,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             },
         }
     }
-    /*
-    fn dispatch_ethernet<Tx, F>(&mut self, tx_token: Tx, timestamp: Instant,
-                                buffer_len: usize, f: F) -> Result<()>
-        where Tx: TxToken, F: FnOnce(EthernetFrame<&mut [u8]>)
-    {
-        let tx_len = EthernetFrame::<&[u8]>::buffer_len(buffer_len);
-        tx_token.consume(timestamp, tx_len, |tx_buffer| {
-            debug_assert!(tx_buffer.as_ref().len() == tx_len);
-            let mut frame = EthernetFrame::new_unchecked(tx_buffer.as_mut());
-            frame.set_src_addr(self.config.ethernet_addr);
-
-            f(frame);
-
-            Ok(())
-        })
-    }
-    */
-    /*
-    fn lookup_hardware_addr<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
-                                src_addr: &IpAddress, dst_addr: &IpAddress) ->
-                               Result<(EthernetAddress, Tx)>
-        where Tx: TxToken
-    {
-        if dst_addr.is_multicast() {
-            let b = dst_addr.as_bytes();
-            let hardware_addr =
-                match dst_addr {
-                    &IpAddress::Unspecified =>
-                        None,
-                    #[cfg(feature = "proto-ipv4")]
-                    &IpAddress::Ipv4(_addr) =>
-                        Some(EthernetAddress::from_bytes(&[
-                            0x01, 0x00,
-                            0x5e, b[1] & 0x7F,
-                            b[2], b[3],
-                        ])),
-                    #[cfg(feature = "proto-ipv6")]
-                    &IpAddress::Ipv6(_addr) =>
-                        Some(EthernetAddress::from_bytes(&[
-                            0x33, 0x33,
-                            b[12], b[13],
-                            b[14], b[15],
-                        ])),
-                    &IpAddress::__Nonexhaustive =>
-                        unreachable!()
-                };
-            match hardware_addr {
-                Some(hardware_addr) =>
-                    // Destination is multicast
-                    return Ok((hardware_addr, tx_token)),
-                None =>
-                    // Continue
-                    (),
-            }
-        }
-
-        let dst_addr = self.ip_config.route(dst_addr, timestamp)?;
-
-        match self.state.neighbor_cache.lookup(&dst_addr, timestamp) {
-            NeighborAnswer::Found(hardware_addr) =>
-                return Ok((hardware_addr, tx_token)),
-            NeighborAnswer::RateLimited =>
-                return Err(Error::Unaddressable),
-            NeighborAnswer::NotFound => (),
-        }
-
-        match (src_addr, dst_addr) {
-            #[cfg(feature = "proto-ipv4")]
-            (&IpAddress::Ipv4(src_addr), IpAddress::Ipv4(dst_addr)) => {
-                net_debug!("address {} not in neighbor cache, sending ARP request",
-                           dst_addr);
-
-                let arp_repr = ArpRepr::EthernetIpv4 {
-                    operation: ArpOperation::Request,
-                    source_hardware_addr: self.config.ethernet_addr,
-                    source_protocol_addr: src_addr,
-                    target_hardware_addr: EthernetAddress::BROADCAST,
-                    target_protocol_addr: dst_addr,
-                };
-
-                self.dispatch_ethernet(tx_token, timestamp, arp_repr.buffer_len(), |mut frame| {
-                    frame.set_dst_addr(EthernetAddress::BROADCAST);
-                    frame.set_ethertype(EthernetProtocol::Arp);
-
-                    arp_repr.emit(&mut ArpPacket::new_unchecked(frame.payload_mut()))
-                })?;
-
-                Err(Error::Unaddressable)
-            }
-
-            #[cfg(feature = "proto-ipv6")]
-            (&IpAddress::Ipv6(src_addr), IpAddress::Ipv6(dst_addr)) => {
-                net_debug!("address {} not in neighbor cache, sending Neighbor Solicitation",
-                           dst_addr);
-
-                let solicit = Icmpv6Repr::Ndisc(NdiscRepr::NeighborSolicit {
-                    target_addr: src_addr,
-                    lladdr: Some(self.config.ethernet_addr),
-                });
-
-                let packet = ip::Packet::Icmpv6((
-                    Ipv6Repr {
-                        src_addr: src_addr,
-                        dst_addr: dst_addr.solicited_node(),
-                        next_header: IpProtocol::Icmpv6,
-                        payload_len: solicit.buffer_len(),
-                        hop_limit: 0xff
-                    },
-                    solicit,
-                ));
-
-                self.dispatch_ip(tx_token, timestamp, packet)?;
-                Err(Error::Unaddressable)
-            }
-
-            _ => Err(Error::Unaddressable)
-        }
-    }
-    */
+    
     fn dispatch_ip<Tx: TxToken>(&mut self, tx_token: Tx, timestamp: Instant,
                           packet: ip::Packet) -> Result<()> {
         let ip_repr = packet.ip_repr().lower(&self.ip_config.ip_addrs)?;
