@@ -496,6 +496,23 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
             let mut p = processor!(self);
             let mut ip = ip_processor!(self);
             rx_token.consume(timestamp, |frame| {
+                p.process_ip_payload(&mut ip, sockets, timestamp, &frame).map_err(|err| {
+                    net_debug!("cannot process ingress packet: {}", err);
+                    //net_debug!("packet dump follows:\n{}",
+                    //           PrettyPrinter::<EthernetFrame<&[u8]>>::new("", &frame));
+                    err
+                }).and_then(|response| {
+                    match response {
+                        Some(packet) => {
+                            processed_any = true;
+                            ip.dispatch(tx_token, timestamp, packet).map_err(|err| {
+                                net_debug!("cannot dispatch response packet: {}", err);
+                                err
+                            })
+                        }
+                        None => Ok(())
+                    }
+                })
                 //process ip packet directly here
                 /*
                 #[cfg(feature = "proto-ipv4")]
@@ -524,23 +541,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
                     }
                 })
                 */
-                p.process_ip_payload(&mut ip, sockets, timestamp, &frame).map_err(|err| {
-                    net_debug!("cannot process ingress packet: {}", err);
-                    //net_debug!("packet dump follows:\n{}",
-                    //           PrettyPrinter::<EthernetFrame<&[u8]>>::new("", &frame));
-                    err
-                }).and_then(|response| {
-                    match response {
-                        Some(packet) => {
-                            processed_any = true;
-                            ip.dispatch(tx_token, timestamp, packet).map_err(|err| {
-                                net_debug!("cannot dispatch response packet: {}", err);
-                                err
-                            })
-                        }
-                        None => Ok(())
-                    }
-                })
+                
             })?;
         }
         Ok(processed_any)
@@ -582,12 +583,12 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         };
         match ip.iptype(&frame) {
             #[cfg(feature = "proto-ipv4")]
-            IpType::Ipv4 => {
+            ip::IpType::Ipv4 => {
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
                 self.ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },
             #[cfg(feature = "proto-ipv6")]
-            IpType::Ipv6 => {
+            ip::IpType::Ipv6 => {
                 let ipv6_packet = Ipv6Packet::new_checked(frame)?;
                 self.ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet);
             },
