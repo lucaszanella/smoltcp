@@ -552,6 +552,28 @@ impl<'b> State<'b> {
 }
 
 impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
+    
+    //TODO: this doesn't need to be a function, can be put into socket_ingress
+    fn process_ip_payload<'frame, T: AsRef<[u8]>>
+                       (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
+                       Result<Option<Packet<'frame>>>
+    {
+        //match types here
+
+        //use, directly, ip.process_ipvX insteaf of self.process_ipvX?
+        #[cfg(feature = "proto-ipv4")]
+        EthernetProtocol::Ipv4 =>{
+            let ipv4_packet = Ipv4Packet::new_checked(eth_frame.payload())?;
+            self.ip.process_ipv4(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip))
+        },
+        #[cfg(feature = "proto-ipv6")]
+        EthernetProtocol::Ipv6 => {
+            let ipv6_packet = Ipv6Packet::new_checked(eth_frame.payload())?;
+            self.ip.process_ipv6(ip, sockets, timestamp, &eth_frame).map(|o| o.map(Packet::Ip))
+        },
+        // Drop all other traffic.
+        _ => Err(Error::Unrecognized),
+    }
     /*
     fn process_ethernet<'frame, T: AsRef<[u8]>>
                        (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
@@ -624,6 +646,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         }
     }
     */
+    /*
     #[cfg(feature = "proto-ipv6")]
     fn process_ipv6<'frame, T: AsRef<[u8]>>
                    (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant,
@@ -684,7 +707,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet)
     }
 
-
+    */
     #[cfg(feature = "proto-ipv6")]
     fn process_ndisc<'frame>(&mut self, timestamp: Instant, ip_repr: Ipv6Repr,
                              repr: NdiscRepr<'frame>) -> Result<Option<ip::Packet<'frame>>> {
