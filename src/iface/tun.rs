@@ -13,15 +13,15 @@ use time::{Duration, Instant};
 //use wire::{EthernetAddress, EthernetProtocol, EthernetFrame};
 use wire::{IpAddress, IpCidr};//IpRepr
 #[cfg(feature = "proto-ipv6")]
-use wire::{IpProtocol, Ipv6Packet, Ipv6Repr};
+use wire::{Ipv6Packet, Ipv6Repr};//IpProtocol, 
 #[cfg(feature = "proto-ipv4")]
 use wire::{Ipv4Address, Ipv4Packet};
 #[cfg(feature = "proto-ipv4")]
 //use wire::{ArpPacket, ArpRepr, ArpOperation};
 #[cfg(feature = "proto-ipv6")]
-use wire::{Icmpv6Repr};
+//use wire::{Icmpv6Repr};
 #[cfg(feature = "proto-ipv6")]
-use wire::{NdiscNeighborFlags, NdiscRepr};
+use wire::{NdiscRepr};//NdiscNeighborFlags
 
 use socket::{SocketSet, PollAt};
 use super::{NeighborCache};//, NeighborAnswer};
@@ -67,6 +67,7 @@ struct Config {
 /// many protocols, and changes during packet processing.
 struct State<'b> {
     neighbor_cache:         NeighborCache<'b>,
+    #[allow(dead_code)]
     device_capabilities:    DeviceCapabilities,
 }
 
@@ -590,12 +591,12 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
-                return ip_processor!(self).process_ipv4(lower, sockets, timestamp, &ipv4_packet);
+                return ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },
             #[cfg(feature = "proto-ipv6")]
             ::wire::ip::Version::Ipv6 => {
                 let ipv6_packet = Ipv6Packet::new_checked(frame)?;
-                return ip_processor!(self).process_ipv6(lower, sockets, timestamp, &ipv6_packet);
+                return ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet);
             },
             // Drop all other traffic.
             _ => Err(Error::Unrecognized),
@@ -603,8 +604,9 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
     }
     
     #[cfg(feature = "proto-ipv6")]
-    fn process_ndisc<'frame>(&mut self, timestamp: Instant, ip_repr: Ipv6Repr,
-                             repr: NdiscRepr<'frame>) -> Result<Option<ip::Packet<'frame>>> {
+    fn process_ndisc<'frame>(&mut self, _timestamp: Instant, _ip_repr: Ipv6Repr,
+                             _repr: NdiscRepr<'frame>) -> Result<Option<ip::Packet<'frame>>> {
+    /*
         match repr {
             NdiscRepr::NeighborAdvert { lladdr, target_addr, flags } => {
                 let ip_addr = ip_repr.src_addr.into();
@@ -649,6 +651,8 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             }
             _ => Ok(None)
         }
+    */
+        Ok(None)
     }
 
     fn dispatch<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
@@ -682,8 +686,8 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         */
     }
     
-    fn dispatch_ip<Tx: TxToken>(&mut self, tx_token: Tx, timestamp: Instant,
-                          packet: ip::Packet) -> Result<()> {
+    fn dispatch_ip<Tx: TxToken>(&mut self, _tx_token: Tx, _timestamp: Instant,
+                          _packet: ip::Packet) -> Result<()> {
         Ok(())
         /*
         let ip_repr = packet.ip_repr().lower(&self.ip_config.ip_addrs)?;

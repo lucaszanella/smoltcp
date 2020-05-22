@@ -47,10 +47,6 @@ use socket::UdpSocket;
 use socket::TcpSocket;
 use super::Routes;
 //use byteorder::{ByteOrder, NetworkEndian};
-pub enum IpType{
-    Ipv4,
-    Ipv6
-}
 
 /// Configuration for the interface. This is data that can't change
 /// as a result of processing packets (as opposed to State).
@@ -302,16 +298,6 @@ impl<'e> State<'e> {
 }
 
 impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
-
-    #[inline]
-    pub fn iptype<'frame, T: AsRef<[u8]>>(ip_packet: &'frame T) -> IpType {
-        let version = ip_packet.as_ref()[0] >> 4;
-        match version {
-            4 => IpType::Ipv4,
-            6 => IpType::Ipv6
-            //_ => 
-        }
-    }
 
     pub fn socket_egress(&mut self, lower: &mut impl LowerDispatcher, sockets: &mut SocketSet, timestamp: Instant) -> Result<bool> {
         let _caps = self.state.device_capabilities.clone();
@@ -1029,8 +1015,8 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             Ok(Some(Packet::Tcp(TcpSocket::rst_reply(&ip_repr, &tcp_repr))))
         }
     }
-    pub fn dispatch<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
-        packet: Packet) -> Result<()>
+    pub fn dispatch<Tx>(&mut self, _tx_token: Tx, _timestamp: Instant,
+        _packet: Packet) -> Result<()>
         where Tx: TxToken
     {
         Ok(())
