@@ -9,24 +9,27 @@ use core::marker::PhantomData;
 use {Error, Result};
 use phy::{Device, DeviceCapabilities, RxToken, TxToken};
 use time::{Duration, Instant};
-use wire::pretty_print::PrettyPrinter;
-use wire::{EthernetAddress, EthernetProtocol, EthernetFrame};
-use wire::{IpAddress, IpRepr, IpCidr};
+//use wire::pretty_print::PrettyPrinter;
+//use wire::{EthernetAddress, EthernetProtocol, EthernetFrame};
+use wire::{IpAddress, IpCidr};//IpRepr
 #[cfg(feature = "proto-ipv6")]
 use wire::{IpProtocol, Ipv6Packet, Ipv6Repr};
 #[cfg(feature = "proto-ipv4")]
-use wire::{Ipv4Address, Ipv4Packet, Ipv4Repr};
+use wire::{Ipv4Address, Ipv4Packet};
 #[cfg(feature = "proto-ipv4")]
-use wire::{ArpPacket, ArpRepr, ArpOperation};
+//use wire::{ArpPacket, ArpRepr, ArpOperation};
 #[cfg(feature = "proto-ipv6")]
 use wire::{Icmpv6Repr};
 #[cfg(feature = "proto-ipv6")]
 use wire::{NdiscNeighborFlags, NdiscRepr};
 
 use socket::{SocketSet, PollAt};
-use super::{NeighborCache, NeighborAnswer};
+use super::{NeighborCache};//, NeighborAnswer};
 use super::Routes;
 use super::ip;
+//mod ip;
+//use ip;
+//use wire::ip::{Version};
 
 /// An Ethernet network interface.
 ///
@@ -68,7 +71,7 @@ struct State<'b> {
 }
 
 struct Processor<'b, 'c, 'e, 'x> {
-    config: &'x Config,
+    //config: &'x Config,
     ip_config: &'x ip::Config<'c, 'e>,
     state: &'x mut State<'b>
 }
@@ -77,7 +80,6 @@ struct Processor<'b, 'c, 'e, 'x> {
 // and we need them to borrow just the fields.
 macro_rules! processor {
     ($iface:expr) => (Processor{
-        config: &$iface.config,
         ip_config: &$iface.ip_config,
         state: &mut $iface.state,
     })
@@ -246,13 +248,14 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// [ethernet_addr]: #method.ethernet_addr
     /// [neighbor_cache]: #method.neighbor_cache
     pub fn finalize(self) -> Interface<'b, 'c, 'e, DeviceT> {
-        match (self.ethernet_addr, self.neighbor_cache) {
-            (Some(ethernet_addr), Some(neighbor_cache)) => {
+        match self.neighbor_cache {
+             Some(neighbor_cache) => {
                 let caps = self.device.capabilities();
                 let mut ip_caps = self.device.capabilities();
 
                 // The IP code needs to know the MTU of the IP packet (not including the Ethernet header)
-                ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len(); 
+                //ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len(); 
+                ip_caps.max_transmission_unit -= 1500;//1500???
 
                 Interface {
                     device: self.device,
@@ -287,12 +290,14 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     }
 }
 
+/*
 #[derive(Debug, PartialEq)]
 enum Packet<'a> {
     //#[cfg(feature = "proto-ipv4")]
     //Arp(ArpRepr),
     Ip(ip::Packet<'a>),
 }
+*/
 
 impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
         where DeviceT: for<'d> Device<'d> {
@@ -337,7 +342,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
             None => Ok(false),
             Some(pkt) => { 
                 let tx_token = self.device.transmit().ok_or(Error::Exhausted)?;
-                processor!(self).dispatch(tx_token, timestamp, Packet::Ip(pkt))?;
+                processor!(self).dispatch(tx_token, timestamp, pkt)?;
                 Ok(true)
             },
         }
@@ -352,7 +357,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
             None => Ok(false),
             Some(pkt) => { 
                 let tx_token = self.device.transmit().ok_or(Error::Exhausted)?;
-                processor!(self).dispatch(tx_token, timestamp, Packet::Ip(pkt))?;
+                processor!(self).dispatch(tx_token, timestamp, pkt)?;
                 Ok(true)
             },
         }
@@ -576,21 +581,21 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
     //TODO: this doesn't need to be a function, can be put into socket_ingress
     fn process_ip_payload<'frame, T: AsRef<[u8]>>
                        (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
-                       Result<Option<Packet<'frame>>>
+                       Result<Option<ip::Packet<'frame>>>
     {
         let lower = &mut LowerProcessor{
             _processor: processor!(self),
         };
-        match ip.iptype(&frame) {
+        match ::wire::ip::Version::of_packet(&frame.as_ref()).unwrap() {
             #[cfg(feature = "proto-ipv4")]
-            ip::IpType::Ipv4 => {
+            ::wire::ip::Version::Ipv4 => {
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
-                self.ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
+                return ip_processor!(self).process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },
             #[cfg(feature = "proto-ipv6")]
-            ip::IpType::Ipv6 => {
+            ::wire::ip::Version::Ipv6 => {
                 let ipv6_packet = Ipv6Packet::new_checked(frame)?;
-                self.ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet);
+                return ip_processor!(self).process_ipv6(lower, sockets, timestamp, &ipv6_packet);
             },
             // Drop all other traffic.
             _ => Err(Error::Unrecognized),
@@ -647,11 +652,12 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
     }
 
     fn dispatch<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
-                    packet: Packet) -> Result<()>
+                    packet: ip::Packet) -> Result<()>
         where Tx: TxToken
     {
+        self.dispatch_ip(tx_token, timestamp, packet)
+        /*
         match packet {
-            /*
             #[cfg(feature = "proto-ipv4")]
             Packet::Arp(arp_repr) => {
                 let dst_hardware_addr =
@@ -668,15 +674,18 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                     arp_repr.emit(&mut packet);
                 })
             },
-            */
-            Packet::Ip(packet) => {
+            
+            ip::Packet::Ip(packet) => {
                 self.dispatch_ip(tx_token, timestamp, packet)
             },
         }
+        */
     }
     
     fn dispatch_ip<Tx: TxToken>(&mut self, tx_token: Tx, timestamp: Instant,
                           packet: ip::Packet) -> Result<()> {
+        Ok(())
+        /*
         let ip_repr = packet.ip_repr().lower(&self.ip_config.ip_addrs)?;
         let caps = self.state.device_capabilities.clone();
 
@@ -700,6 +709,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             let payload = &mut frame.payload_mut()[ip_repr.buffer_len()..];
             packet.emit_payload(ip_repr, payload, &caps);
         })
+        */
     }
 }
 

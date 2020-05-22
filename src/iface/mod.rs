@@ -9,6 +9,7 @@ mod neighbor;
 mod route;
 #[cfg(feature = "ethernet")]
 mod ethernet;
+mod ip;
 mod tun;
 
 #[cfg(feature = "ethernet")]

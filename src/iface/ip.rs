@@ -6,7 +6,7 @@ use managed::ManagedMap;
 use core::marker::PhantomData;
 
 use {Error, Result};
-use phy::{DeviceCapabilities};
+use phy::{DeviceCapabilities, TxToken};
 #[cfg(feature = "proto-igmp")]
 use time::Duration;
 use time::Instant;
@@ -46,8 +46,7 @@ use socket::UdpSocket;
 #[cfg(feature = "socket-tcp")]
 use socket::TcpSocket;
 use super::Routes;
-use byteorder::{ByteOrder, NetworkEndian};
-
+//use byteorder::{ByteOrder, NetworkEndian};
 pub enum IpType{
     Ipv4,
     Ipv6
@@ -1029,6 +1028,12 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             // The packet wasn't handled by a socket, send a TCP RST packet.
             Ok(Some(Packet::Tcp(TcpSocket::rst_reply(&ip_repr, &tcp_repr))))
         }
+    }
+    pub fn dispatch<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
+        packet: Packet) -> Result<()>
+        where Tx: TxToken
+    {
+        Ok(())
     }
 }
 
