@@ -83,6 +83,7 @@ impl<'a> phy::TxToken for StmPhyTxToken<'a> {
 }
 ```
 */
+//#![allow(unsafe_code)]
 
 use Result;
 use time::Instant;
@@ -100,6 +101,7 @@ mod loopback;
 mod raw_socket;
 #[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
 mod tap_interface;
+mod virtual_tun;
 
 #[cfg(all(any(feature = "phy-raw_socket", feature = "phy-tap_interface"), unix))]
 pub use self::sys::wait;

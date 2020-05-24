@@ -1,43 +1,129 @@
-use std::cell::RefCell;
+#![allow(unsafe_code)]
+#![allow(unused)]
+
+//use std::cell::RefCell;
 use std::vec::Vec;
-use std::rc::Rc;
+//use std::rc::Rc;
 use std::io;
-use std::os::unix::io::{RawFd, AsRawFd};
+//use std::os::unix::io::{RawFd, AsRawFd};
+use std::collections::VecDeque;
 
 use Result;
-use phy::{self, sys, DeviceCapabilities, Device};
+use phy::{self, DeviceCapabilities, Device};
 use time::Instant;
 
+use std::isize;
+use std::slice;
+use std::ops::{ Deref};//, DerefMut };
+
+extern "C"{ 
+    //delete the pointer
+    fn cppDeletePointer(data: *mut u8);
+    //delete[] the pointer
+    fn cppDeleteArray(data: *mut u8);
+}
+
+struct CBuffer {
+    ptr: *const u8,
+    len: usize,
+}
+
+impl CBuffer {
+    /// Transfers ownership of `ptr`.
+    pub unsafe fn from_owning(ptr: *const u8, len: usize) -> Option<Self> {
+        if ptr.is_null() || len > isize::MAX as usize {
+            // slices are not allowed to be backed by a null pointer
+            // or be longer than `isize::MAX`. Alignment is irrelevant for `u8`.
+            None
+        } else {
+            Some(CBuffer { ptr, len })
+        }
+    }
+}
+
+impl Drop for CBuffer {
+    fn drop(&mut self) {
+        //unsafe {
+            //cppDelete(self.ptr);
+        //}
+    }
+}
+
+impl Deref for CBuffer {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            slice::from_raw_parts(self.ptr as *const u8, self.len)
+        }
+    }
+}
+/*
+impl DerefMut for CBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            slice::from_raw_parts(self.ptr, self.len)
+        }
+    }
+}
+*/
 /// A virtual Ethernet interface.
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct VirtualTapInterface {
     //lower:  Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
     //put lower with transmit capabilities here? I think no lower is needed, only internally used
     //lower:
-    mtu:    usize
+    mtu:    usize,
+    packetsFromOutside: VecDeque<CBuffer>,
+    packetsFromInside: VecDeque<CBuffer>
 }
 
+/*
 impl AsRawFd for VirtualTapInterface {
     fn as_raw_fd(&self) -> RawFd {
         self.lower.borrow().as_raw_fd()
     }
 }
-
+*/
 impl VirtualTapInterface {
     /// Attaches to a TAP interface called `name`, or creates it if it does not exist.
     ///
     /// If `name` is a persistent interface configured with UID of the current user,
     /// no special privileges are needed. Otherwise, this requires superuser privileges
     /// or a corresponding capability set on the executable.
-    pub fn new(name: &str) -> io::Result<VirtualTapInterface> {
+    pub fn new(_name: &str) -> io::Result<VirtualTapInterface> {
         //let mut lower = sys::VirtualTapInterfaceDesc::new(name)?;
         //lower.attach_interface()?;
         //todo: 1500 is the right size?
-        let mtu 1500;//= lower.interface_mtu()?;
+        let mtu = 1500;//= lower.interface_mtu()?;
+        //ip packet example
+        let packet1: &[u8] = &[69, 0, 0, 72, 203, 203, 64, 0, 64, 17, 163, 
+            146, 192, 168, 255, 18, 10, 139, 1, 1, 221, 255, 0, 53, 0, 52, 174, 
+            21, 221, 124, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 6, 99, 104, 97, 116, 45, 
+            48, 4, 99, 111, 114, 101, 10, 107, 101, 121, 98, 97, 115, 101, 97, 
+            112, 105, 3, 99, 111, 109, 0, 0, 28, 0, 1];
+
+        let mut v1: VecDeque<CBuffer>  = VecDeque::new();
+        let v2: VecDeque<CBuffer>  = VecDeque::new();
+        let c1 = unsafe {CBuffer::from_owning(packet1.as_ptr(), packet1.len())};
+        v1.push_back(c1.unwrap());
         Ok(VirtualTapInterface {
             //lower: Rc::new(RefCell::new(lower)),
-            mtu:   mtu
+            mtu:   mtu,
+            packetsFromOutside: v1,
+            packetsFromInside: v2
         })
+    }
+
+    fn recv(&mut self, buffer: &mut [u8]) -> core::result::Result<usize, u32> {
+        if self.packetsFromOutside.len()>0 {
+            let packet = self.packetsFromOutside.front();
+            let size = 0;
+            //copy here, and update size
+            Ok(size)
+        } else {
+            Err(1)
+        }
     }
 }
 
@@ -55,14 +141,14 @@ impl<'a> Device<'a> for VirtualTapInterface {
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
         //let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; self.mtu];
-        match lower.recv(&mut buffer[..]) {
+        match self.recv(&mut buffer[..]) {
             Ok(size) => {
                 buffer.resize(size, 0);
                 let rx = RxToken { buffer };
-                let tx = TxToken { lower: self.lower.clone() };
+                let tx = TxToken {};
                 Some((rx, tx))
             }
-            Err(ref err) if err.kind() == io::ErrorKind::WouldBlock => {
+            Err(err) if err == 1 => {
                 None
             }
             Err(err) => panic!("{}", err)
@@ -71,7 +157,7 @@ impl<'a> Device<'a> for VirtualTapInterface {
 
     fn transmit(&'a mut self) -> Option<Self::TxToken> {
         Some(TxToken {
-            lower: self.lower.clone(),
+            //lower: self.lower.clone(),
         })
     }
 }
