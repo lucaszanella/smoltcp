@@ -23,7 +23,7 @@ fn main() {
     utils::setup_logging("");
 
     let (mut opts, mut free) = utils::create_options();
-    utils::add_tap_options(&mut opts, &mut free);
+    //utils::add_tap_options(&mut opts, &mut free);
     utils::add_middleware_options(&mut opts, &mut free);
     free.push("ADDRESS");
     free.push("URL");

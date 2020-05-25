@@ -602,9 +602,10 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                     ipv4_packet: &Ipv4Packet<&'frame T>) ->
                    Result<Option<Packet<'frame>>>
     {
+        println!("----------------gonna process ip packet");
         let checksum_caps = self.state.device_capabilities.checksum.clone();
         let ipv4_repr = Ipv4Repr::parse(&ipv4_packet, &checksum_caps)?;
-
+        println!("----------------src address: {}, dst address: {}", ipv4_repr.src_addr, ipv4_repr.dst_addr);
         if !ipv4_repr.src_addr.is_unicast() {
             // Discard packets with non-unicast source addresses.
             net_debug!("non-unicast source address");
@@ -643,17 +644,22 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                 self.process_igmp(timestamp, ipv4_repr, ip_payload),
 
             #[cfg(feature = "socket-udp")]
-            IpProtocol::Udp =>
-                self.process_udp(sockets, ip_repr, handled_by_raw_socket, ip_payload),
+            IpProtocol::Udp => {
+                println!("UDP packet!");
+                self.process_udp(sockets, ip_repr, handled_by_raw_socket, ip_payload)
+            },
 
             #[cfg(feature = "socket-tcp")]
-            IpProtocol::Tcp =>
-                self.process_tcp(sockets, timestamp, ip_repr, ip_payload),
+            IpProtocol::Tcp =>{
+                println!("TCP packet!");
+                self.process_tcp(sockets, timestamp, ip_repr, ip_payload)
+            },
 
             _ if handled_by_raw_socket =>
                 Ok(None),
 
             _ => {
+                println!("no category for this packet");
                 // Send back as much of the original payload as we can.
                 let payload_len = icmp_reply_payload_len(ip_payload.len(), IPV4_MIN_MTU,
                                                          ipv4_repr.buffer_len());

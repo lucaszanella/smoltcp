@@ -500,7 +500,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
                 None => break,
                 Some(tokens) => tokens,
             };
-            println!("received packet");
+            //println!("received packet");
             let mut p = processor!(self);
             let mut ip = ip_processor!(self);
             rx_token.consume(timestamp, |frame| {
@@ -592,7 +592,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         match ::wire::ip::Version::of_packet(&frame.as_ref()).unwrap() {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
-                println!("processing ipv4 packet");
+                //println!("processing ipv4 packet");
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
                 return ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },

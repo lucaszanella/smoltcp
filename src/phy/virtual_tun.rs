@@ -116,10 +116,12 @@ impl VirtualTapInterface {
     }
 
     fn recv(&mut self, buffer: &mut [u8]) -> core::result::Result<usize, u32> {
-        let packet = self.packetsFromOutside.pop_front();
         match self.packetsFromOutside.pop_front() {
             Some(packet)=> {
-                buffer.copy_from_slice(packet.deref());
+                let buffer_packet = packet.deref();
+                for (dst, src) in buffer.iter_mut().zip(buffer_packet) {
+                    *dst = *src
+                }
                 Ok(packet.len)
             },
             None => Err(1)
@@ -190,6 +192,7 @@ impl phy::TxToken for TxToken {
         //let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; len];
         let result = f(&mut buffer);
+        println!("should send NOW packet with size {}", len);
         //lower.send(&buffer[..]).unwrap();
         result
     }
