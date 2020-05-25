@@ -116,6 +116,8 @@ pub use self::loopback::Loopback;
 pub use self::raw_socket::RawSocket;
 #[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
 pub use self::tap_interface::TapInterface;
+pub use self::virtual_tun::VirtualTapInterface;
+
 
 #[cfg(feature = "ethernet")]
 /// A tracer device for Ethernet frames.

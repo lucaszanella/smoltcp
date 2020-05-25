@@ -91,7 +91,7 @@ impl VirtualTapInterface {
     /// If `name` is a persistent interface configured with UID of the current user,
     /// no special privileges are needed. Otherwise, this requires superuser privileges
     /// or a corresponding capability set on the executable.
-    pub fn new(_name: &str) -> io::Result<VirtualTapInterface> {
+    pub fn new(_name: &str) -> VirtualTapInterface {
         //let mut lower = sys::VirtualTapInterfaceDesc::new(name)?;
         //lower.attach_interface()?;
         //todo: 1500 is the right size?
@@ -107,23 +107,24 @@ impl VirtualTapInterface {
         let v2: VecDeque<CBuffer>  = VecDeque::new();
         let c1 = unsafe {CBuffer::from_owning(packet1.as_ptr(), packet1.len())};
         v1.push_back(c1.unwrap());
-        Ok(VirtualTapInterface {
+        VirtualTapInterface {
             //lower: Rc::new(RefCell::new(lower)),
             mtu:   mtu,
             packetsFromOutside: v1,
             packetsFromInside: v2
-        })
+        }
     }
 
     fn recv(&mut self, buffer: &mut [u8]) -> core::result::Result<usize, u32> {
-        if self.packetsFromOutside.len()>0 {
-            let packet = self.packetsFromOutside.front();
-            let size = 0;
-            //copy here, and update size
-            Ok(size)
-        } else {
-            Err(1)
+        let packet = self.packetsFromOutside.pop_front();
+        match self.packetsFromOutside.pop_front() {
+            Some(packet)=> {
+                buffer.copy_from_slice(packet.deref());
+                Ok(packet.len)
+            },
+            None => Err(1)
         }
+        
     }
 }
 

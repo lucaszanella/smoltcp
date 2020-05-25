@@ -12,11 +12,12 @@ use std::str::{self, FromStr};
 use std::collections::BTreeMap;
 //use std::os::unix::io::AsRawFd;
 use url::Url;
-use smoltcp::phy::wait as phy_wait;
+//use smoltcp::phy::wait as phy_wait;
 use smoltcp::wire::{Ipv4Address, Ipv6Address, IpAddress, IpCidr};
 use smoltcp::iface::{NeighborCache, VirtualTunInterfaceBuilder, Routes};
 use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
 use smoltcp::time::Instant;
+use smoltcp::phy::VirtualTapInterface;
 
 fn main() {
     utils::setup_logging("");
@@ -29,7 +30,7 @@ fn main() {
 
     let mut matches = utils::parse_options(&opts, free);
     //let device = utils::parse_tap_options(&mut matches);
-    //let device = VirtualTun;
+    let device = VirtualTapInterface::new("openvpn3");
     //let fd = device.as_raw_fd();
     //let device = utils::parse_middleware_options(&mut matches, device, /*loopback=*/false);
     let address = IpAddress::from_str(&matches.free[0]).expect("invalid address format");

@@ -255,8 +255,9 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
                 let mut ip_caps = self.device.capabilities();
 
                 // The IP code needs to know the MTU of the IP packet (not including the Ethernet header)
+                // We can use the EthernetFrame header lenght for now
                 //ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len(); 
-                ip_caps.max_transmission_unit -= 1500;//1500???
+                ip_caps.max_transmission_unit -= 22; //hard coded so we dont depend on Ethernet struct
 
                 Interface {
                     device: self.device,
@@ -499,6 +500,7 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
                 None => break,
                 Some(tokens) => tokens,
             };
+            println!("received packet");
             let mut p = processor!(self);
             let mut ip = ip_processor!(self);
             rx_token.consume(timestamp, |frame| {
@@ -590,6 +592,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         match ::wire::ip::Version::of_packet(&frame.as_ref()).unwrap() {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
+                println!("processing ipv4 packet");
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
                 return ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
             },
@@ -660,60 +663,20 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
         where Tx: TxToken
     {
         self.dispatch_ip(tx_token, timestamp, packet)
-        /*
-        match packet {
-            #[cfg(feature = "proto-ipv4")]
-            Packet::Arp(arp_repr) => {
-                let dst_hardware_addr =
-                    match arp_repr {
-                        ArpRepr::EthernetIpv4 { target_hardware_addr, .. } => target_hardware_addr,
-                        _ => unreachable!()
-                    };
-
-                self.dispatch_ethernet(tx_token, timestamp, arp_repr.buffer_len(), |mut frame| {
-                    frame.set_dst_addr(dst_hardware_addr);
-                    frame.set_ethertype(EthernetProtocol::Arp);
-
-                    let mut packet = ArpPacket::new_unchecked(frame.payload_mut());
-                    arp_repr.emit(&mut packet);
-                })
-            },
-            
-            ip::Packet::Ip(packet) => {
-                self.dispatch_ip(tx_token, timestamp, packet)
-            },
-        }
-        */
     }
     
-    fn dispatch_ip<Tx: TxToken>(&mut self, _tx_token: Tx, _timestamp: Instant,
-                          _packet: ip::Packet) -> Result<()> {
-        Ok(())
-        /*
-        let ip_repr = packet.ip_repr().lower(&self.ip_config.ip_addrs)?;
+    fn dispatch_ip<Tx: TxToken>(&mut self, tx_token: Tx, timestamp: Instant,
+                          packet: ip::Packet) -> Result<()> {
         let caps = self.state.device_capabilities.clone();
-
-        let (dst_hardware_addr, tx_token) =
-            self.lookup_hardware_addr(tx_token, timestamp,
-                                      &ip_repr.src_addr(), &ip_repr.dst_addr())?;
-
-        //Dispatch to virtual interface here?
-        self.dispatch_ethernet(tx_token, timestamp, ip_repr.total_len(), |mut frame| {
-            frame.set_dst_addr(dst_hardware_addr);
-            match ip_repr {
-                #[cfg(feature = "proto-ipv4")]
-                IpRepr::Ipv4(_) => frame.set_ethertype(EthernetProtocol::Ipv4),
-                #[cfg(feature = "proto-ipv6")]
-                IpRepr::Ipv6(_) => frame.set_ethertype(EthernetProtocol::Ipv6),
-                _ => return
-            }
-
-            ip_repr.emit(frame.payload_mut(), &caps.checksum);
-
-            let payload = &mut frame.payload_mut()[ip_repr.buffer_len()..];
+        let ip_repr = packet.ip_repr().lower(&self.ip_config.ip_addrs)?;
+        let tx_len = ip_repr.total_len();//???
+        tx_token.consume(timestamp, tx_len, |tx_buffer| {
+            debug_assert!(tx_buffer.as_ref().len() == tx_len);
+            ip_repr.emit(&mut *tx_buffer, &caps.checksum);
+            let payload = &mut (&mut *tx_buffer)[ip_repr.buffer_len()..];
             packet.emit_payload(ip_repr, payload, &caps);
+            Ok(())
         })
-        */
     }
 }
 
