@@ -21,7 +21,6 @@ fn main() {
     utils::setup_logging("");
 
     let (mut opts, mut free) = utils::create_options();
-    utils::add_tap_options(&mut opts, &mut free);
     utils::add_middleware_options(&mut opts, &mut free);
     free.push("ADDRESS");
     free.push("URL");
@@ -29,7 +28,7 @@ fn main() {
     let mut matches = utils::parse_options(&opts, free);
     //let device = utils::parse_tap_options(&mut matches);
     //let device = TunInterface::new("tun0");
-    let device = TunInterface::new("tun0").unwrap();
+    let device = TunInterface::new("tun1").unwrap();
     //let fd = device.as_raw_fd();
     let device = utils::parse_middleware_options(&mut matches, device, /*loopback=*/false);
     let address = IpAddress::from_str(&matches.free[0]).expect("invalid address format");
