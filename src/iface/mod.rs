@@ -22,5 +22,5 @@ pub use self::route::{Route, Routes};
 #[cfg(feature = "ethernet")]
 pub use self::ethernet::{Interface as EthernetInterface,
                          InterfaceBuilder as EthernetInterfaceBuilder};
-pub use self::tun::{Interface as VirtualTunInterface,
-                    InterfaceBuilder as VirtualTunInterfaceBuilder};
+pub use self::tun::{Interface as TunInterface,
+                    InterfaceBuilder as TunInterfaceBuilder};

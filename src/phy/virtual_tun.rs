@@ -1,9 +1,9 @@
 #![allow(unsafe_code)]
 #![allow(unused)]
 
-//use std::cell::RefCell;
+use std::cell::RefCell;
 use std::vec::Vec;
-//use std::rc::Rc;
+use std::rc::Rc;
 use std::io;
 //use std::os::unix::io::{RawFd, AsRawFd};
 use std::collections::VecDeque;
@@ -69,30 +69,31 @@ impl DerefMut for CBuffer {
 */
 /// A virtual Ethernet interface.
 //#[derive(Debug)]
-pub struct VirtualTapInterface {
-    //lower:  Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+#[derive(Clone)]
+pub struct VirtualTunInterface {
+    //lower:  Rc<RefCell<sys::VirtualTunInterfaceDesc>>,
     //put lower with transmit capabilities here? I think no lower is needed, only internally used
     //lower:
     mtu:    usize,
-    packetsFromOutside: VecDeque<CBuffer>,
-    packetsFromInside: VecDeque<CBuffer>
+    packets_from_outside: Rc<RefCell<VecDeque<CBuffer>>>,
+    packets_from_inside: Rc<RefCell<VecDeque<CBuffer>>>
 }
 
 /*
-impl AsRawFd for VirtualTapInterface {
+impl AsRawFd for VirtualTunInterface {
     fn as_raw_fd(&self) -> RawFd {
         self.lower.borrow().as_raw_fd()
     }
 }
 */
-impl VirtualTapInterface {
+impl VirtualTunInterface {
     /// Attaches to a TAP interface called `name`, or creates it if it does not exist.
     ///
     /// If `name` is a persistent interface configured with UID of the current user,
     /// no special privileges are needed. Otherwise, this requires superuser privileges
     /// or a corresponding capability set on the executable.
-    pub fn new(_name: &str) -> VirtualTapInterface {
-        //let mut lower = sys::VirtualTapInterfaceDesc::new(name)?;
+    pub fn new(_name: &str) -> VirtualTunInterface {
+        //let mut lower = sys::VirtualTunInterfaceDesc::new(name)?;
         //lower.attach_interface()?;
         //todo: 1500 is the right size?
         let mtu = 1500;//= lower.interface_mtu()?;
@@ -107,16 +108,16 @@ impl VirtualTapInterface {
         let v2: VecDeque<CBuffer>  = VecDeque::new();
         let c1 = unsafe {CBuffer::from_owning(packet1.as_ptr(), packet1.len())};
         v1.push_back(c1.unwrap());
-        VirtualTapInterface {
+        VirtualTunInterface {
             //lower: Rc::new(RefCell::new(lower)),
             mtu:   mtu,
-            packetsFromOutside: v1,
-            packetsFromInside: v2
+            packets_from_outside: Rc::new(RefCell::new(v1)),
+            packets_from_inside: Rc::new(RefCell::new(v2))
         }
     }
 
     fn recv(&mut self, buffer: &mut [u8]) -> core::result::Result<usize, u32> {
-        match self.packetsFromOutside.pop_front() {
+        match self.packets_from_outside.borrow_mut().pop_front() {
             Some(packet)=> {
                 let buffer_packet = packet.deref();
                 for (dst, src) in buffer.iter_mut().zip(buffer_packet) {
@@ -130,7 +131,7 @@ impl VirtualTapInterface {
     }
 }
 
-impl<'a> Device<'a> for VirtualTapInterface {
+impl<'a> Device<'a> for VirtualTunInterface {
     type RxToken = RxToken;
     type TxToken = TxToken;
 
@@ -142,13 +143,12 @@ impl<'a> Device<'a> for VirtualTapInterface {
     }
 
     fn receive(&'a mut self) -> Option<(Self::RxToken, Self::TxToken)> {
-        //let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; self.mtu];
         match self.recv(&mut buffer[..]) {
             Ok(size) => {
                 buffer.resize(size, 0);
                 let rx = RxToken { buffer };
-                let tx = TxToken {};
+                let tx = TxToken { lower: Rc::new(RefCell::new(self.clone()))};
                 Some((rx, tx))
             }
             Err(err) if err == 1 => {
@@ -160,7 +160,7 @@ impl<'a> Device<'a> for VirtualTapInterface {
 
     fn transmit(&'a mut self) -> Option<Self::TxToken> {
         Some(TxToken {
-            //lower: self.lower.clone(),
+            lower: Rc::new(RefCell::new(self.clone())),
         })
     }
 }
@@ -180,7 +180,8 @@ impl phy::RxToken for RxToken {
 
 #[doc(hidden)]
 pub struct TxToken {
-    //lower: Rc<RefCell<sys::VirtualTapInterfaceDesc>>,
+    lower: Rc<RefCell<VirtualTunInterface>>,
+    //lower: Rc<RefCell<sys::VirtualTunInterface>>,
     //put lower here with send capabilities?
     //lower:
 }
@@ -189,11 +190,15 @@ impl phy::TxToken for TxToken {
     fn consume<R, F>(self, _timestamp: Instant, len: usize, f: F) -> Result<R>
         where F: FnOnce(&mut [u8]) -> Result<R>
     {
-        //let mut lower = self.lower.borrow_mut();
+        let mut lower = self.lower.borrow_mut();
         let mut buffer = vec![0; len];
         let result = f(&mut buffer);
         println!("should send NOW packet with size {}", len);
         //lower.send(&buffer[..]).unwrap();
+        //TODO: unwrap here?
+        //TODO: only if result ok
+        let p = unsafe{CBuffer::from_owning(buffer.as_ptr(), buffer.len())};
+        lower.packets_from_inside.borrow_mut().push_back(p.unwrap());
         result
     }
 }
