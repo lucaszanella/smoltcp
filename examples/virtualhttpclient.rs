@@ -17,7 +17,7 @@ use smoltcp::wire::{Ipv4Address, Ipv6Address, IpAddress, IpCidr};
 use smoltcp::iface::{NeighborCache, TunInterfaceBuilder, Routes};
 use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
 use smoltcp::time::Instant;
-use smoltcp::phy::TunInterface;
+use smoltcp::phy::VirtualTunInterface;
 
 fn main() {
     utils::setup_logging("");
@@ -30,7 +30,7 @@ fn main() {
 
     let mut matches = utils::parse_options(&opts, free);
     //let device = utils::parse_tap_options(&mut matches);
-    let device = TunInterface::new("tun0").unwrap();
+    let device = VirtualTunInterface::new("tun0").unwrap();
     //let fd = device.as_raw_fd();
     //let device = utils::parse_middleware_options(&mut matches, device, /*loopback=*/false);
     let address = IpAddress::from_str(&matches.free[0]).expect("invalid address format");

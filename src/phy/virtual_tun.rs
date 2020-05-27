@@ -92,7 +92,7 @@ impl VirtualTunInterface {
     /// If `name` is a persistent interface configured with UID of the current user,
     /// no special privileges are needed. Otherwise, this requires superuser privileges
     /// or a corresponding capability set on the executable.
-    pub fn new(_name: &str) -> VirtualTunInterface {
+    pub fn new(_name: &str) -> Result<VirtualTunInterface> {
         //let mut lower = sys::VirtualTunInterfaceDesc::new(name)?;
         //lower.attach_interface()?;
         //todo: 1500 is the right size?
@@ -108,12 +108,12 @@ impl VirtualTunInterface {
         let v2: VecDeque<CBuffer>  = VecDeque::new();
         let c1 = unsafe {CBuffer::from_owning(packet1.as_ptr(), packet1.len())};
         v1.push_back(c1.unwrap());
-        VirtualTunInterface {
+        Ok(VirtualTunInterface {
             //lower: Rc::new(RefCell::new(lower)),
             mtu:   mtu,
             packets_from_outside: Rc::new(RefCell::new(v1)),
             packets_from_inside: Rc::new(RefCell::new(v2))
-        }
+        })
     }
 
     fn recv(&mut self, buffer: &mut [u8]) -> core::result::Result<usize, u32> {

@@ -10,11 +10,9 @@ mod utils;
 
 use std::str::{self, FromStr};
 use std::collections::BTreeMap;
-use std::os::unix::io::AsRawFd;
 use url::Url;
-use smoltcp::phy::wait as phy_wait;
-use smoltcp::wire::{EthernetAddress, Ipv4Address, Ipv6Address, IpAddress, IpCidr};
-use smoltcp::iface::{NeighborCache, EthernetInterfaceBuilder, Routes};
+use smoltcp::wire::{Ipv4Address, Ipv6Address, IpAddress, IpCidr};
+use smoltcp::iface::{NeighborCache, TunInterfaceBuilder, Routes};
 use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
 use smoltcp::time::Instant;
 use smoltcp::phy::TunInterface;
@@ -29,9 +27,10 @@ fn main() {
     free.push("URL");
 
     let mut matches = utils::parse_options(&opts, free);
-    let device = utils::parse_tap_options(&mut matches);
-    let device = TunInterface::new("tun0");
-    let fd = device.as_raw_fd();
+    //let device = utils::parse_tap_options(&mut matches);
+    //let device = TunInterface::new("tun0");
+    let device = TunInterface::new("tun0").unwrap();
+    //let fd = device.as_raw_fd();
     let device = utils::parse_middleware_options(&mut matches, device, /*loopback=*/false);
     let address = IpAddress::from_str(&matches.free[0]).expect("invalid address format");
     let url = Url::parse(&matches.free[1]).expect("invalid url format");
@@ -43,7 +42,7 @@ fn main() {
     let tcp_tx_buffer = TcpSocketBuffer::new(vec![0; 1024]);
     let tcp_socket = TcpSocket::new(tcp_rx_buffer, tcp_tx_buffer);
 
-    let ethernet_addr = EthernetAddress([0x02, 0x00, 0x00, 0x00, 0x00, 0x02]);
+    //let ethernet_addr = EthernetAddress([0x02, 0x00, 0x00, 0x00, 0x00, 0x02]);
     let ip_addrs = [IpCidr::new(IpAddress::v4(192, 168, 69, 1), 24),
                     IpCidr::new(IpAddress::v6(0xfdaa, 0, 0, 0, 0, 0, 0, 1), 64),
                     IpCidr::new(IpAddress::v6(0xfe80, 0, 0, 0, 0, 0, 0, 1), 64)];
@@ -53,8 +52,7 @@ fn main() {
     let mut routes = Routes::new(&mut routes_storage[..]);
     routes.add_default_ipv4_route(default_v4_gw).unwrap();
     routes.add_default_ipv6_route(default_v6_gw).unwrap();
-    let mut iface = EthernetInterfaceBuilder::new(device)
-            .ethernet_addr(ethernet_addr)
+    let mut iface = TunInterfaceBuilder::new(device)
             .neighbor_cache(neighbor_cache)
             .ip_addrs(ip_addrs)
             .routes(routes)
@@ -110,6 +108,6 @@ fn main() {
             }
         }
 
-        phy_wait(fd, iface.poll_delay(&sockets, timestamp)).expect("wait error");
+        //phy_wait(fd, iface.poll_delay(&sockets, timestamp)).expect("wait error");
     }
 }
