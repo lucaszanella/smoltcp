@@ -8,7 +8,7 @@ use Result;
 use phy::{self, sys, DeviceCapabilities, Device};
 use time::Instant;
 
-/// A virtual Ethernet interface.
+/// A Tun interface.
 #[derive(Debug)]
 pub struct TunInterface {
     lower:  Rc<RefCell<sys::TunInterfaceDesc>>,
