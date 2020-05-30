@@ -1,7 +1,7 @@
 // Heads up! Before working on this file you should read the parts
 // of RFC 1122 that discuss Ethernet, ARP and IP for any IPv4 work
 // and RFCs 8200 and 4861 for any IPv6 and NDISC work.
-
+//TODO: remove this
 use managed::{ManagedSlice, ManagedMap};
 #[cfg(not(feature = "proto-igmp"))]
 use core::marker::PhantomData;
@@ -681,6 +681,7 @@ impl<'b, 'c, 'e, 'x> ip::LowerProcessor for LowerProcessor<'b, 'c, 'e, 'x> {
 }
 
 #[cfg(test)]
+
 mod test {
     #[cfg(feature = "proto-igmp")]
     use std::vec::Vec;
@@ -1517,6 +1518,7 @@ mod test {
             Ok((remote_hw_addr, MockTxToken)));
     }
     */
+    
     #[test]
     #[cfg(feature = "proto-igmp")]
     fn test_handle_igmp() {
@@ -1604,7 +1606,7 @@ mod test {
             assert_eq!(leaves[i].1, IgmpRepr::LeaveGroup { group_addr });
         }
     }
-
+    
     #[test]
     #[cfg(all(feature = "proto-ipv4", feature = "socket-raw"))]
     fn test_raw_socket_no_reply() {
