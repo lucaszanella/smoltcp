@@ -796,7 +796,7 @@ mod test {
         let (mut iface, mut socket_set) = create_loopback();
 
         //let mut eth_bytes = vec![0u8; 54];
-        let mut buffer: &mut [u8] = &mut [0u8; 54];
+        let buffer: &mut [u8] = &mut [0u8; 54];
         // Unknown Ipv4 Protocol
         //
         // Because the destination is the broadcast address
@@ -822,17 +822,19 @@ mod test {
         let p = processor!(iface);
         let mut ip = ip_processor!(iface);
         let caps = p.state.device_capabilities.clone();
-        repr.emit(buffer, &caps.checksum);
+        repr.emit(&mut *buffer, &caps.checksum);
         
         // Ensure that the unknown protocol frame does not trigger an
         // ICMP error response when the destination address is a
         // broadcast address
-        #[cfg(all(feature = "proto-ipv4", not(feature = "proto-ipv6")))]
+        #[cfg(any(feature = "proto-ipv4", feature = "proto-ipv6"))]
         assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(None));
+        /*
         #[cfg(feature = "proto-ipv6")]
         assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(None));
+        */
     }
 
     #[test]
@@ -842,8 +844,8 @@ mod test {
         let (mut iface, mut socket_set) = create_loopback();
 
         //let mut eth_bytes = vec![0u8; 34];
-        let mut buffer: &mut [u8] = &mut [0u8; 34];
-
+        //let buffer: &mut [u8] = &mut [0u8; 34];
+        let buffer = &mut vec![0u8; 34];
         // Unknown Ipv4 Protocol with no payload
         let repr = IpRepr::Ipv4(Ipv4Repr {
             src_addr:    Ipv4Address([0x7f, 0x00, 0x00, 0x02]),
@@ -881,9 +883,9 @@ mod test {
         let p = processor!(iface);
         let mut ip = ip_processor!(iface);
         let caps = p.state.device_capabilities.clone();
-        repr.emit(buffer, &caps.checksum);
+        repr.emit(buffer.as_mut_slice(), &caps.checksum);
 
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
+        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), buffer),
                    Ok(Some(expected_repr)));
     }
 
@@ -1073,11 +1075,11 @@ mod test {
         //TODO: will it work?
         let buffer: &mut [u8] = buffer_.as_mut_slice();
         ipv4_repr.emit(
-            &mut Ipv4Packet::new_unchecked(buffer),
+            &mut Ipv4Packet::new_unchecked(&mut *buffer),
             &ChecksumCapabilities::default());
         icmpv4_repr.emit(
             &mut Icmpv4Packet::new_unchecked(
-                &mut buffer[ipv4_repr.buffer_len()..]),
+                &mut (*buffer)[ipv4_repr.buffer_len()..]),
             &ChecksumCapabilities::default());
         /*
         // Emit to ethernet frame
@@ -1645,15 +1647,15 @@ mod test {
         */
         let mut buffer_ = vec![0u8; ipv4_repr.buffer_len() +
             udp_repr.buffer_len()];
-        let mut buffer: &mut [u8] = buffer_.as_mut_slice();
+        let buffer: &mut [u8] = buffer_.as_mut_slice();
         let buffer = {
             //let mut frame = EthernetFrame::new_unchecked(&mut eth_bytes);
             ipv4_repr.emit(
-                &mut Ipv4Packet::new_unchecked(buffer),
+                &mut Ipv4Packet::new_unchecked(&mut *buffer),
                 &ChecksumCapabilities::default());
             udp_repr.emit(
                 &mut UdpPacket::new_unchecked(
-                    &mut buffer[ipv4_repr.buffer_len()..]),
+                    &mut (*buffer)[ipv4_repr.buffer_len()..]),
                 &src_addr.into(),
                 &dst_addr.into(),
                 &ChecksumCapabilities::default());
@@ -1707,12 +1709,12 @@ mod test {
         ];
         */
         let mut buffer_ = vec![0u8; ipv4_repr.buffer_len() + udp_repr.buffer_len()];
-        let mut buffer: &mut [u8] = buffer_.as_mut_slice();
+        let buffer: &mut [u8] = buffer_.as_mut_slice();
 
         let buffer = {
             //let mut frame = EthernetFrame::new_unchecked(&mut eth_bytes);
             ipv4_repr.emit(
-                &mut Ipv4Packet::new_unchecked(buffer),
+                &mut Ipv4Packet::new_unchecked(&mut *buffer),
                 &ChecksumCapabilities::default());
             udp_repr.emit(
                 &mut UdpPacket::new_unchecked(
@@ -1791,16 +1793,16 @@ mod test {
         */
 
         let mut buffer_ = vec![0u8; ipv4_repr.buffer_len() + udp_repr.buffer_len()];
-        let mut buffer: &mut [u8] = buffer_.as_mut_slice();
+        let buffer: &mut [u8] = buffer_.as_mut_slice();
 
         let buffer = {
             //let mut frame = EthernetFrame::new_unchecked(&mut eth_bytes);
             ipv4_repr.emit(
-                &mut Ipv4Packet::new_unchecked(buffer),
+                &mut Ipv4Packet::new_unchecked(&mut *buffer),
                 &ChecksumCapabilities::default());
             udp_repr.emit(
                 &mut UdpPacket::new_unchecked(
-                    &mut buffer[ipv4_repr.buffer_len()..]),
+                    &mut (*buffer)[ipv4_repr.buffer_len()..]),
                 &src_addr.into(),
                 &dst_addr.into(),
                 &ChecksumCapabilities::default());
