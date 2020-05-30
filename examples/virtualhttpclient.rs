@@ -28,7 +28,7 @@ fn main() {
     free.push("ADDRESS");
     free.push("URL");
 
-    let mut matches = utils::parse_options(&opts, free);
+    let matches = utils::parse_options(&opts, free);
     //let device = utils::parse_tap_options(&mut matches);
     let device = VirtualTunInterface::new("tun0").unwrap();
     //let fd = device.as_raw_fd();

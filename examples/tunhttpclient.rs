@@ -8,8 +8,10 @@ extern crate smoltcp;
 
 mod utils;
 
+use smoltcp::phy::wait as phy_wait;
 use std::str::{self, FromStr};
 use std::collections::BTreeMap;
+use std::os::unix::io::AsRawFd;
 use url::Url;
 use smoltcp::wire::{Ipv4Address, Ipv6Address, IpAddress, IpCidr};
 use smoltcp::iface::{NeighborCache, TunInterfaceBuilder, Routes};
@@ -18,6 +20,23 @@ use smoltcp::time::Instant;
 use smoltcp::phy::TunInterface;
 
 fn main() {
+    /*
+        Usage:
+
+        Create tun1:
+
+        sudo ip tuntap add dev tun1 mode tun user `id -un`
+        sudo ip link set dev tun1 up
+        sudo ip addr add dev tun1 local 192.168.69.0 remote 192.168.69.1
+        sudo iptables -t filter -I FORWARD -i tun1 -o eth0 -j ACCEPT
+        sudo iptables -t filter -I FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+        sudo iptables -t nat -I POSTROUTING -o eth0 -j MASQUERADE
+        sudo sysctl net.ipv4.ip_forward=1
+
+        ./tunhttpclient 172.217.28.238 http://google.com
+
+        You should get HTML from google (IP might change throughout history, ping to see)
+    */
     utils::setup_logging("");
 
     let (mut opts, mut free) = utils::create_options();
@@ -26,14 +45,11 @@ fn main() {
     free.push("URL");
 
     let mut matches = utils::parse_options(&opts, free);
-    //let device = utils::parse_tap_options(&mut matches);
-    //let device = TunInterface::new("tun0");
     let device = TunInterface::new("tun1").unwrap();
-    //let fd = device.as_raw_fd();
+    let fd = device.as_raw_fd();
     let device = utils::parse_middleware_options(&mut matches, device, /*loopback=*/false);
     let address = IpAddress::from_str(&matches.free[0]).expect("invalid address format");
     let url = Url::parse(&matches.free[1]).expect("invalid url format");
-
 
     let neighbor_cache = NeighborCache::new(BTreeMap::new());
 
@@ -41,7 +57,6 @@ fn main() {
     let tcp_tx_buffer = TcpSocketBuffer::new(vec![0; 1024]);
     let tcp_socket = TcpSocket::new(tcp_rx_buffer, tcp_tx_buffer);
 
-    //let ethernet_addr = EthernetAddress([0x02, 0x00, 0x00, 0x00, 0x00, 0x02]);
     let ip_addrs = [IpCidr::new(IpAddress::v4(192, 168, 69, 1), 24),
                     IpCidr::new(IpAddress::v6(0xfdaa, 0, 0, 0, 0, 0, 0, 1), 64),
                     IpCidr::new(IpAddress::v6(0xfe80, 0, 0, 0, 0, 0, 0, 1), 64)];
@@ -106,7 +121,7 @@ fn main() {
                 _ => state
             }
         }
-
-        //phy_wait(fd, iface.poll_delay(&sockets, timestamp)).expect("wait error");
+        
+        phy_wait(fd, iface.poll_delay(&sockets, timestamp)).expect("wait error");
     }
 }
