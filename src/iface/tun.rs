@@ -697,7 +697,7 @@ mod test {
     use socket::SocketSet;
     #[cfg(feature = "proto-ipv4")]
     //use wire::{ArpOperation, ArpPacket, ArpRepr};
-    //use wire::{EthernetAddress, EthernetFrame, EthernetProtocol};
+    //use wire::{EthernetFrame};
     use wire::{IpAddress, IpCidr, IpProtocol, IpRepr};
     #[cfg(feature = "proto-ipv4")]
     use wire::{Ipv4Address, Ipv4Repr};
@@ -1529,6 +1529,7 @@ mod test {
                 .filter_map(|frame| {
                     //let eth_frame = EthernetFrame::new_checked(frame).ok()?;
                     let ipv4_packet = Ipv4Packet::new_checked(frame).ok()?;
+                    //let ipv4_packet = Ipv4Packet::new_checked(eth_frame.payload()).ok()?;
                     let ipv4_repr = Ipv4Repr::parse(&ipv4_packet, &checksum_caps).ok()?;
                     let ip_payload = ipv4_packet.payload();
                     let igmp_packet = IgmpPacket::new_checked(ip_payload).ok()?;
@@ -1566,8 +1567,7 @@ mod test {
         // General query
         let timestamp = Instant::now();
         const GENERAL_QUERY_BYTES: &[u8] = &[
-            0x01, 0x00, 0x5e, 0x00, 0x00, 0x01, 0x0a, 0x14,
-            0x48, 0x01, 0x21, 0x01, 0x08, 0x00, 0x46, 0xc0,
+            0x46, 0xc0,
             0x00, 0x24, 0xed, 0xb4, 0x00, 0x00, 0x01, 0x02,
             0x47, 0x43, 0xac, 0x16, 0x63, 0x04, 0xe0, 0x00,
             0x00, 0x01, 0x94, 0x04, 0x00, 0x00, 0x11, 0x64,
@@ -1585,6 +1585,7 @@ mod test {
                     Ok(())
                 }).unwrap();
         }
+        println!("gonna ingress");
         // Trigger processing until all packets received through the
         // loopback have been processed, including responses to
         // GENERAL_QUERY_BYTES. Therefore `recv_all()` would return 0
