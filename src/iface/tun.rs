@@ -487,7 +487,7 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
     fn process_ndisc<'frame>(&mut self, _timestamp: Instant, _ip_repr: Ipv6Repr,
         _repr: NdiscRepr<'frame>) -> Result<Option<ip::Packet<'frame>>> {
             Ok(None)
-        }
+    }
     fn dispatch<Tx>(&mut self, tx_token: Tx, timestamp: Instant,
                     packet: ip::Packet) -> Result<()>
         where Tx: TxToken
