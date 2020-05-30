@@ -1,7 +1,5 @@
 // Heads up! Before working on this file you should read the parts
-// of RFC 1122 that discuss Ethernet, ARP and IP for any IPv4 work
-// and RFCs 8200 and 4861 for any IPv6 and NDISC work.
-//TODO: remove this
+// of RFC 1122 that discuss IP for any IPv4 work
 use managed::{ManagedSlice, ManagedMap};
 #[cfg(not(feature = "proto-igmp"))]
 use core::marker::PhantomData;
@@ -17,17 +15,14 @@ use wire::{Ipv6Packet, Ipv6Repr};
 use wire::{Ipv4Address, Ipv4Packet};
 #[cfg(feature = "proto-ipv4")]
 #[cfg(feature = "proto-ipv6")]
-use wire::{NdiscRepr};//NdiscNeighborFlags
+use wire::{NdiscRepr};
 
 use socket::{SocketSet, PollAt};
-use super::{NeighborCache};//, NeighborAnswer};
+use super::{NeighborCache};
 use super::Routes;
 use super::ip;
-//mod ip;
-//use ip;
-//use wire::ip::{Version};
 
-/// An Ethernet network interface.
+/// A TUN network interface.
 ///
 /// The network interface logically owns a number of other data structures; to avoid
 /// a dependency on heap allocation, it instead owns a `BorrowMut<[T]>`, which can be
@@ -201,10 +196,8 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// If a required option is not provided, this function will panic. Required
     /// options are:
     ///
-    /// - [ethernet_addr]
     /// - [neighbor_cache]
     ///
-    /// [ethernet_addr]: #method.ethernet_addr
     /// [neighbor_cache]: #method.neighbor_cache
     pub fn finalize(self) -> Interface<'b, 'c, 'e, DeviceT> {
         match self.neighbor_cache {
@@ -432,10 +425,10 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
             let mut p = processor!(self);
             let mut ip = ip_processor!(self);
             rx_token.consume(timestamp, |frame| {
-                p.process_ip_payload(&mut ip, sockets, timestamp, &frame).map_err(|err| {
+                p.process_ip_packet(&mut ip, sockets, timestamp, &frame).map_err(|err| {
                     net_debug!("cannot process ingress packet: {}", err);
                     //net_debug!("packet dump follows:\n{}",
-                    //           PrettyPrinter::<EthernetFrame<&[u8]>>::new("", &frame));
+                    //           PrettyPrinter::<&[u8]>::new("", &frame));
                     err
                 }).and_then(|response| {
                     match response {
@@ -469,7 +462,7 @@ impl<'b> State<'b> {
 }
 
 impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {    
-    fn process_ip_payload<'frame, T: AsRef<[u8]>>
+    fn process_ip_packet<'frame, T: AsRef<[u8]>>
                        (&mut self, ip: &mut ip::Processor, sockets: &mut SocketSet, timestamp: Instant, frame: &'frame T) ->
                        Result<Option<ip::Packet<'frame>>>
     {
@@ -480,12 +473,12 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
                 let ipv4_packet = Ipv4Packet::new_checked(frame)?;
-                return ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet);
+                ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet)
             },
             #[cfg(feature = "proto-ipv6")]
             ::wire::ip::Version::Ipv6 => {
                 let ipv6_packet = Ipv6Packet::new_checked(frame)?;
-                return ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet);
+                ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet)
             },
             // Drop all other traffic.
             _ => Err(Error::Unrecognized),
@@ -691,7 +684,7 @@ mod test {
         // ICMP error response when the destination address is a
         // broadcast address
         #[cfg(any(feature = "proto-ipv4", feature = "proto-ipv6"))]
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
+        assert_eq!(processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(None));
     }
 
@@ -743,7 +736,7 @@ mod test {
         let caps = p.state.device_capabilities.clone();
         repr.emit(buffer.as_mut_slice(), &caps.checksum);
 
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), buffer),
+        assert_eq!(processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), buffer),
                    Ok(Some(expected_repr)));
     }
 
@@ -953,7 +946,7 @@ mod test {
         let expected_packet = ip::Packet::Icmpv4((expected_ipv4_repr, expected_icmpv4_repr));
 
         let mut ip = ip_processor!(iface);
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
+        assert_eq!(processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(Some(expected_packet)));
     }
 
@@ -1274,7 +1267,7 @@ mod test {
         };
 
         let mut ip = ip_processor!(iface);
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
+        assert_eq!(processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(None));
     }
 
@@ -1328,7 +1321,7 @@ mod test {
         };
 
         let mut ip = ip_processor!(iface);
-        let frame = processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer);
+        let frame = processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer);
 
         // because the packet could not be handled we should send an Icmp message
         assert!(match frame {  
@@ -1402,7 +1395,7 @@ mod test {
         };
 
         let mut ip = ip_processor!(iface);
-        assert_eq!(processor!(iface).process_ip_payload(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
+        assert_eq!(processor!(iface).process_ip_packet(&mut ip, &mut socket_set, Instant::from_millis(0), &buffer),
                    Ok(None));
 
         {
