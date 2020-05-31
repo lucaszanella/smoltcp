@@ -206,9 +206,7 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
                 let mut ip_caps = self.device.capabilities();
 
                 // The IP code needs to know the MTU of the IP packet (not including the Ethernet header)
-                //ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len();
-                //TODO: confirm this value 
-                ip_caps.max_transmission_unit -= 22; //hard coded so we dont depend on Ethernet struct
+                ip_caps.max_transmission_unit -= 14; //hard coded so we dont depend on Ethernet struct
 
                 Interface {
                     device: self.device,
