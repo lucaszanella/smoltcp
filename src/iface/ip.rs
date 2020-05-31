@@ -139,11 +139,8 @@ pub(crate) enum Packet<'a> {
     Tcp((IpRepr, TcpRepr<'a>))
 }
 
-//use iface::PrettyPrinter::PrettyPrint;
 use core::fmt;
 use wire::pretty_print::{PrettyPrint, PrettyIndent};
-//use wire::Ipv4Packet;
-//use wire::Ipv6Packet;
 
 impl PrettyPrint for Packet<'_> {
     fn pretty_print(buffer: &dyn AsRef<[u8]>, f: &mut fmt::Formatter,
@@ -151,15 +148,11 @@ impl PrettyPrint for Packet<'_> {
         match ::wire::ip::Version::of_packet(buffer.as_ref()).unwrap() {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
-                //let ipv4_packet = Ipv4Packet::new_checked(buffer)?;
-                //ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet)
                 indent.increase(f)?;
                 Ipv4Packet::<&[u8]>::pretty_print(buffer, f, indent)
             },
             #[cfg(feature = "proto-ipv6")]
             ::wire::ip::Version::Ipv6 => {
-                //let ipv6_packet = Ipv6Packet::new_checked(buffer)?;
-                //ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet)
                 indent.increase(f)?;
                 Ipv6Packet::<&[u8]>::pretty_print(buffer, f, indent)
             },
