@@ -148,13 +148,6 @@ use wire::pretty_print::{PrettyPrint, PrettyIndent};
 impl PrettyPrint for Packet<'_> {
     fn pretty_print(buffer: &dyn AsRef<[u8]>, f: &mut fmt::Formatter,
                     indent: &mut PrettyIndent) -> fmt::Result {
-        /*
-            let frame = match Frame::new_checked(buffer) {
-            Err(err)  => return write!(f, "{}({})", indent, err),
-            Ok(frame) => frame
-        };
-        write!(f, "{}{}", indent, frame)?;
-        */
         match ::wire::ip::Version::of_packet(buffer.as_ref()).unwrap() {
             #[cfg(feature = "proto-ipv4")]
             ::wire::ip::Version::Ipv4 => {
@@ -173,26 +166,6 @@ impl PrettyPrint for Packet<'_> {
             // Drop all other traffic.
             _ => Ok(()),
         }
-        /*
-        match frame.ethertype() {
-            #[cfg(feature = "proto-ipv4")]
-            EtherType::Arp => {
-                indent.increase(f)?;
-                super::ArpPacket::<&[u8]>::pretty_print(&frame.payload(), f, indent)
-            }
-            #[cfg(feature = "proto-ipv4")]
-            EtherType::Ipv4 => {
-                indent.increase(f)?;
-                super::Ipv4Packet::<&[u8]>::pretty_print(&frame.payload(), f, indent)
-            }
-            #[cfg(feature = "proto-ipv6")]
-            EtherType::Ipv6 => {
-                indent.increase(f)?;
-                super::Ipv6Packet::<&[u8]>::pretty_print(&frame.payload(), f, indent)
-            }
-            _ => Ok(())
-        }
-        */
     }
 }
 
@@ -698,20 +671,17 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
                 self.process_igmp(timestamp, ipv4_repr, ip_payload),
 
             #[cfg(feature = "socket-udp")]
-            IpProtocol::Udp => {
-                self.process_udp(sockets, ip_repr, handled_by_raw_socket, ip_payload)
-            },
+            IpProtocol::Udp => 
+                self.process_udp(sockets, ip_repr, handled_by_raw_socket, ip_payload),
 
             #[cfg(feature = "socket-tcp")]
-            IpProtocol::Tcp =>{
-                self.process_tcp(sockets, timestamp, ip_repr, ip_payload)
-            },
+            IpProtocol::Tcp =>
+                self.process_tcp(sockets, timestamp, ip_repr, ip_payload),
 
             _ if handled_by_raw_socket =>
                 Ok(None),
 
             _ => {
-                println!("no category for this packet");
                 // Send back as much of the original payload as we can.
                 let payload_len = icmp_reply_payload_len(ip_payload.len(), IPV4_MIN_MTU,
                                                          ipv4_repr.buffer_len());

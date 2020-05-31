@@ -22,7 +22,7 @@ impl AsRawFd for TunInterface {
 }
 
 impl TunInterface {
-    /// Attaches to a TAP interface called `name`, or creates it if it does not exist.
+    /// Attaches to a TUN interface called `name`, or creates it if it does not exist.
     ///
     /// If `name` is a persistent interface configured with UID of the current user,
     /// no special privileges are needed. Otherwise, this requires superuser privileges

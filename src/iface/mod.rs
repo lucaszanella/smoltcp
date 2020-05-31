@@ -24,5 +24,3 @@ pub use self::ethernet::{Interface as EthernetInterface,
                          InterfaceBuilder as EthernetInterfaceBuilder};
 pub use self::tun::{Interface as TunInterface,
                     InterfaceBuilder as TunInterfaceBuilder};
-
-//pub use wire::{PrettyPrinter, PrettyIndent};

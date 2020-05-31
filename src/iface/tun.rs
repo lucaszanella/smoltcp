@@ -649,7 +649,6 @@ mod test {
     fn test_no_icmp_no_unicast() {
         let (mut iface, mut socket_set) = create_loopback();
 
-        //let mut eth_bytes = vec![0u8; 54];
         let buffer: &mut [u8] = &mut [0u8; 54];
         // Unknown Ipv4 Protocol
         //
@@ -692,8 +691,6 @@ mod test {
         static NO_BYTES: [u8; 0] = [];
         let (mut iface, mut socket_set) = create_loopback();
 
-        //let mut eth_bytes = vec![0u8; 34];
-        //let buffer: &mut [u8] = &mut [0u8; 34];
         let buffer = &mut vec![0u8; 34];
         // Unknown Ipv4 Protocol with no payload
         let repr = IpRepr::Ipv4(Ipv4Repr {
@@ -921,7 +918,6 @@ mod test {
 
         let mut buffer_ = vec![0u8; ipv4_repr.buffer_len() +
             icmpv4_repr.buffer_len()];
-        //TODO: will it work?
         let buffer: &mut [u8] = buffer_.as_mut_slice();
         ipv4_repr.emit(
             &mut Ipv4Packet::new_unchecked(&mut *buffer),
