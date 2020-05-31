@@ -46,7 +46,6 @@ use socket::UdpSocket;
 #[cfg(feature = "socket-tcp")]
 use socket::TcpSocket;
 use super::Routes;
-//use byteorder::{ByteOrder, NetworkEndian};
 
 /// Configuration for the interface. This is data that can't change
 /// as a result of processing packets (as opposed to State).
@@ -138,6 +137,63 @@ pub(crate) enum Packet<'a> {
     Udp((IpRepr, UdpRepr<'a>)),
     #[cfg(feature = "socket-tcp")]
     Tcp((IpRepr, TcpRepr<'a>))
+}
+
+//use iface::PrettyPrinter::PrettyPrint;
+use core::fmt;
+use wire::pretty_print::{PrettyPrint, PrettyIndent};
+//use wire::Ipv4Packet;
+//use wire::Ipv6Packet;
+
+impl PrettyPrint for Packet<'_> {
+    fn pretty_print(buffer: &dyn AsRef<[u8]>, f: &mut fmt::Formatter,
+                    indent: &mut PrettyIndent) -> fmt::Result {
+        /*
+            let frame = match Frame::new_checked(buffer) {
+            Err(err)  => return write!(f, "{}({})", indent, err),
+            Ok(frame) => frame
+        };
+        write!(f, "{}{}", indent, frame)?;
+        */
+        match ::wire::ip::Version::of_packet(buffer.as_ref()).unwrap() {
+            #[cfg(feature = "proto-ipv4")]
+            ::wire::ip::Version::Ipv4 => {
+                //let ipv4_packet = Ipv4Packet::new_checked(buffer)?;
+                //ip.process_ipv4(lower, sockets, timestamp, &ipv4_packet)
+                indent.increase(f)?;
+                Ipv4Packet::<&[u8]>::pretty_print(buffer, f, indent)
+            },
+            #[cfg(feature = "proto-ipv6")]
+            ::wire::ip::Version::Ipv6 => {
+                //let ipv6_packet = Ipv6Packet::new_checked(buffer)?;
+                //ip.process_ipv6(lower, sockets, timestamp, &ipv6_packet)
+                indent.increase(f)?;
+                Ipv6Packet::<&[u8]>::pretty_print(buffer, f, indent)
+            },
+            // Drop all other traffic.
+            _ => Ok(()),
+        }
+        /*
+        match frame.ethertype() {
+            #[cfg(feature = "proto-ipv4")]
+            EtherType::Arp => {
+                indent.increase(f)?;
+                super::ArpPacket::<&[u8]>::pretty_print(&frame.payload(), f, indent)
+            }
+            #[cfg(feature = "proto-ipv4")]
+            EtherType::Ipv4 => {
+                indent.increase(f)?;
+                super::Ipv4Packet::<&[u8]>::pretty_print(&frame.payload(), f, indent)
+            }
+            #[cfg(feature = "proto-ipv6")]
+            EtherType::Ipv6 => {
+                indent.increase(f)?;
+                super::Ipv6Packet::<&[u8]>::pretty_print(&frame.payload(), f, indent)
+            }
+            _ => Ok(())
+        }
+        */
+    }
 }
 
 impl<'a> Packet<'a> {
@@ -643,13 +699,11 @@ impl<'b, 'c, 'e, 'x> Processor<'b, 'c, 'e, 'x> {
 
             #[cfg(feature = "socket-udp")]
             IpProtocol::Udp => {
-                println!("UDP packet!");
                 self.process_udp(sockets, ip_repr, handled_by_raw_socket, ip_payload)
             },
 
             #[cfg(feature = "socket-tcp")]
             IpProtocol::Tcp =>{
-                println!("TCP packet!");
                 self.process_tcp(sockets, timestamp, ip_repr, ip_payload)
             },
 

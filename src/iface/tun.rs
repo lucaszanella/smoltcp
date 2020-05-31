@@ -7,7 +7,7 @@ use core::marker::PhantomData;
 use {Error, Result};
 use phy::{Device, DeviceCapabilities, RxToken, TxToken};
 use time::{Duration, Instant};
-//use wire::pretty_print::PrettyPrinter;
+use wire::pretty_print::PrettyPrinter;
 use wire::{IpAddress, IpCidr};
 #[cfg(feature = "proto-ipv6")]
 use wire::{Ipv6Packet, Ipv6Repr};
@@ -126,7 +126,7 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// # Panics
     /// This function panics if any of the addresses are not unicast.
     ///
-    /// [ip_addrs]: struct.EthernetInterface.html#method.ip_addrs
+    /// [ip_addrs]: struct.TunInterface.html#method.ip_addrs
     pub fn ip_addrs<T>(mut self, ip_addrs: T) -> Self
         where T: Into<ManagedSlice<'c, IpCidr>>
     {
@@ -147,8 +147,8 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// This option is not available or required for IPv6 as packets sent to
     /// the interface are not filtered by IPv6 address.
     ///
-    /// [routes]: struct.EthernetInterface.html#method.routes
-    /// [ip_addrs]: struct.EthernetInterface.html#method.ip_addrs
+    /// [routes]: struct.TunInterface.html#method.routes
+    /// [ip_addrs]: struct.TunInterface.html#method.ip_addrs
     #[cfg(feature = "proto-ipv4")]
     pub fn any_ip(mut self, enabled: bool) -> Self {
         self.any_ip = enabled;
@@ -158,7 +158,7 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// Set the IP routes the interface will use. See also
     /// [routes].
     ///
-    /// [routes]: struct.EthernetInterface.html#method.routes
+    /// [routes]: struct.TunnetInterface.html#method.routes
     pub fn routes<T>(mut self, routes: T) -> InterfaceBuilder<'b, 'c, 'e, DeviceT>
         where T: Into<Routes<'e>>
     {
@@ -175,7 +175,7 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// storage, i.e. providing a non-empty storage to `ipv4_multicast_groups()`.
     /// Note that this way initial membership reports are **not** sent.
     ///
-    /// [`join_multicast_group()`]: struct.EthernetInterface.html#method.join_multicast_group
+    /// [`join_multicast_group()`]: struct.TunInterface.html#method.join_multicast_group
     #[cfg(feature = "proto-igmp")]
     pub fn ipv4_multicast_groups<T>(mut self, ipv4_multicast_groups: T) -> Self
         where T: Into<ManagedMap<'e, Ipv4Address, ()>>
@@ -206,8 +206,8 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
                 let mut ip_caps = self.device.capabilities();
 
                 // The IP code needs to know the MTU of the IP packet (not including the Ethernet header)
-                // We can use the EthernetFrame header lenght for now
-                //ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len(); 
+                //ip_caps.max_transmission_unit -= EthernetFrame::<&[u8]>::header_len();
+                //TODO: confirm this value 
                 ip_caps.max_transmission_unit -= 22; //hard coded so we dont depend on Ethernet struct
 
                 Interface {
@@ -427,8 +427,8 @@ impl<'b, 'c, 'e, DeviceT> Interface<'b, 'c, 'e, DeviceT>
             rx_token.consume(timestamp, |frame| {
                 p.process_ip_packet(&mut ip, sockets, timestamp, &frame).map_err(|err| {
                     net_debug!("cannot process ingress packet: {}", err);
-                    //net_debug!("packet dump follows:\n{}",
-                    //           PrettyPrinter::<&[u8]>::new("", &frame));
+                    net_debug!("packet dump follows:\n{}",
+                               PrettyPrinter::<ip::Packet>::new("", &frame));
                     err
                 }).and_then(|response| {
                     match response {
@@ -1134,9 +1134,7 @@ mod test {
             recv_all(&mut iface, timestamp)
                 .iter()
                 .filter_map(|frame| {
-                    //let eth_frame = EthernetFrame::new_checked(frame).ok()?;
                     let ipv4_packet = Ipv4Packet::new_checked(frame).ok()?;
-                    //let ipv4_packet = Ipv4Packet::new_checked(eth_frame.payload()).ok()?;
                     let ipv4_repr = Ipv4Repr::parse(&ipv4_packet, &checksum_caps).ok()?;
                     let ip_payload = ipv4_packet.payload();
                     let igmp_packet = IgmpPacket::new_checked(ip_payload).ok()?;
@@ -1252,7 +1250,6 @@ mod test {
             udp_repr.buffer_len()];
         let buffer: &mut [u8] = buffer_.as_mut_slice();
         let buffer = {
-            //let mut frame = EthernetFrame::new_unchecked(&mut eth_bytes);
             ipv4_repr.emit(
                 &mut Ipv4Packet::new_unchecked(&mut *buffer),
                 &ChecksumCapabilities::default());
@@ -1262,7 +1259,6 @@ mod test {
                 &src_addr.into(),
                 &dst_addr.into(),
                 &ChecksumCapabilities::default());
-            //EthernetFrame::new_unchecked(&*frame.into_inner())
             buffer
         };
 
