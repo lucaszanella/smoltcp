@@ -10,7 +10,6 @@ pub const ETH_P_ALL:    libc::c_short = 0x0003;
 
 #[cfg(feature = "phy-tap_interface")]
 pub const TUNSETIFF:    libc::c_ulong = 0x400454CA;
-//TODO: change to tun_interface
 #[cfg(feature = "phy-tun_interface")]
 pub const IFF_TUN:      libc::c_int   = 0x0001;
 #[cfg(feature = "phy-tap_interface")]

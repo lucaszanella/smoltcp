@@ -29,8 +29,6 @@ use super::ip;
 /// a `&mut [T]`, or `Vec<T>` if a heap is available.
 pub struct Interface<'b, 'c, 'e, DeviceT: for<'d> Device<'d>> {
     device:     DeviceT,
-
-    //config:     Config,
     state:      State<'b>,
 
     ip_config:  ip::Config<'c, 'e>,
