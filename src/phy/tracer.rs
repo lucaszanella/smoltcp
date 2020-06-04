@@ -1,6 +1,6 @@
 use Result;
 use wire::pretty_print::{PrettyPrint, PrettyPrinter};
-use phy::{self, DeviceCapabilities, Device};
+use phy::{self, DeviceCapabilities, Device, Medium};
 use time::Instant;
 
 /// A tracer device.
@@ -63,6 +63,10 @@ impl<'a, D, P> Device<'a> for Tracer<D, P>
         inner.transmit().map(|tx_token| {
             TxToken { token: tx_token, writer: writer }
         })
+    }
+
+    fn medium(&self) -> Medium {
+        self.inner.medium()
     }
 }
 

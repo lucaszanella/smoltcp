@@ -1,7 +1,7 @@
 use core::cell::RefCell;
 
 use {Error, Result};
-use phy::{self, DeviceCapabilities, Device};
+use phy::{self, DeviceCapabilities, Device, Medium};
 use time::{Duration, Instant};
 
 // We use our own RNG to stay compatible with #![no_std].
@@ -227,6 +227,10 @@ impl<'a, D> Device<'a> for FaultInjector<D>
             token: token,
             junk:   [0; MTU],
         })
+    }
+
+    fn medium(&self) -> Medium {
+        self.inner.medium()
     }
 }
 

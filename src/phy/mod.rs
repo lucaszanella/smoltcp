@@ -18,7 +18,7 @@ Ethernet controller could look as follows:
 
 ```rust
 use smoltcp::Result;
-use smoltcp::phy::{self, DeviceCapabilities, Device};
+use smoltcp::phy::{self, DeviceCapabilities, Device, Medium};
 use smoltcp::time::Instant;
 
 struct StmPhy {
@@ -53,6 +53,10 @@ impl<'a> phy::Device<'a> for StmPhy {
         caps.max_transmission_unit = 1536;
         caps.max_burst_size = Some(1);
         caps
+    }
+
+    fn medium(&self) -> Medium {
+        Medium::Ethernet
     }
 }
 
@@ -217,6 +221,22 @@ pub struct DeviceCapabilities {
     dummy: ()
 }
 
+/// Type of medium of a device.
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum Medium {
+    /// Ethernet medium. Devices of this type send and receive Ethernet frames,
+    /// and interfaces using it must do neighbor discovery via ARP or NDISC.
+    ///
+    /// Examples of devices of this type are Ethernet, WiFi (802.11), Linux `tap`, and VPNs in tap (layer 2) mode.
+    Ethernet,
+
+    /// IP medium. Devices of this type send and receive IP frames, without an
+    /// Ethernet header. MAC addresses are not used, and no neighbor discovery (ARP, NDISC) is done.
+    ///
+    /// Examples of devices of this type are the Linux `tun`, PPP interfaces, VPNs in tun (layer 3) mode.
+    Ip,
+}
+
 /// An interface for sending and receiving raw network frames.
 ///
 /// The interface is based on _tokens_, which are types that allow to receive/transmit a
@@ -239,6 +259,9 @@ pub trait Device<'a> {
 
     /// Get a description of device capabilities.
     fn capabilities(&self) -> DeviceCapabilities;
+
+    /// Get the medium of the device.
+    fn medium(&self) -> Medium;
 }
 
 /// A token to receive a single network packet.

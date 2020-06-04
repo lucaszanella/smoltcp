@@ -5,7 +5,7 @@ use std::io;
 use std::os::unix::io::{RawFd, AsRawFd};
 
 use Result;
-use phy::{self, sys, DeviceCapabilities, Device};
+use phy::{self, sys, DeviceCapabilities, Device, Medium};
 use time::Instant;
 
 /// A virtual Ethernet interface.
@@ -70,6 +70,10 @@ impl<'a> Device<'a> for TapInterface {
         Some(TxToken {
             lower: self.lower.clone(),
         })
+    }
+
+    fn medium(&self) -> Medium {
+        Medium::Ethernet
     }
 }
 

@@ -1,5 +1,5 @@
 use Result;
-use phy::{self, DeviceCapabilities, Device};
+use phy::{self, DeviceCapabilities, Device, Medium};
 use time::Instant;
 
 // This could be fixed once associated consts are stable.
@@ -74,6 +74,10 @@ impl<'a, D, FTx, FRx> Device<'a> for FuzzInjector<D, FTx, FRx>
             fuzzer: fuzz_tx,
             token:   token,
         })
+    }
+
+     fn medium(&self) -> Medium {
+        self.inner.medium()
     }
 }
 

@@ -5,7 +5,7 @@ use std::io;
 use std::os::unix::io::{RawFd, AsRawFd};
 
 use Result;
-use phy::{self, sys, DeviceCapabilities, Device};
+use phy::{self, sys, DeviceCapabilities, Device, Medium};
 use time::Instant;
 
 /// A socket that captures or transmits the complete frame.
@@ -69,6 +69,10 @@ impl<'a> Device<'a> for RawSocket {
         Some(TxToken {
             lower: self.lower.clone(),
         })
+    }
+
+    fn medium(&self) -> Medium {
+        Medium::Ethernet
     }
 }
 

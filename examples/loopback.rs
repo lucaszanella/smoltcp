@@ -16,7 +16,7 @@ extern crate getopts;
 mod utils;
 
 use core::str;
-use smoltcp::phy::Loopback;
+use smoltcp::phy::{Loopback, Medium};
 use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr};
 use smoltcp::iface::{NeighborCache, EthernetInterfaceBuilder};
 use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
@@ -72,7 +72,7 @@ mod mock {
 
 fn main() {
     let clock = mock::Clock::new();
-    let device = Loopback::new();
+    let device = Loopback::new(Medium::Ethernet);
 
     #[cfg(feature = "std")]
     let device = {

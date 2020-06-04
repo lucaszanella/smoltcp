@@ -113,11 +113,11 @@ impl<'b, 'c, 'e, DeviceT> InterfaceBuilder<'b, 'c, 'e, DeviceT>
     /// ```
     /// # use std::collections::BTreeMap;
     /// use smoltcp::iface::{EthernetInterfaceBuilder, NeighborCache};
-    /// # use smoltcp::phy::Loopback;
+    /// # use smoltcp::phy::{Loopback, Medium};
     /// use smoltcp::wire::{EthernetAddress, IpCidr, IpAddress};
     ///
     /// let device = // ...
-    /// # Loopback::new();
+    /// # Loopback::new(Medium::Ethernet);
     /// let hw_addr = // ...
     /// # EthernetAddress::default();
     /// let neighbor_cache = // ...
@@ -1726,7 +1726,7 @@ mod test {
 
     use super::InterfaceBuilder;
     use iface::{NeighborCache, EthernetInterface};
-    use phy::{self, Loopback, ChecksumCapabilities};
+    use phy::{self, Loopback, ChecksumCapabilities, Medium};
     #[cfg(feature = "proto-igmp")]
     use phy::{Device, RxToken, TxToken};
     use time::Instant;
@@ -1759,7 +1759,7 @@ mod test {
     fn create_loopback<'a, 'b, 'c>() -> (EthernetInterface<'static, 'b, 'c, Loopback>,
                                          SocketSet<'static, 'a, 'b>) {
         // Create a basic device
-        let device = Loopback::new();
+        let device = Loopback::new(Medium::Ethernet);
         let ip_addrs = [
             #[cfg(feature = "proto-ipv4")]
             IpCidr::new(IpAddress::v4(127, 0, 0, 1), 8),
@@ -1807,7 +1807,7 @@ mod test {
     #[test]
     #[should_panic(expected = "a required option was not set")]
     fn test_builder_initialization_panic() {
-        InterfaceBuilder::new(Loopback::new()).finalize();
+        InterfaceBuilder::new(Loopback::new(Medium::Ethernet)).finalize();
     }
 
     #[test]

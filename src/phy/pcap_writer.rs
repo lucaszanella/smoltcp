@@ -5,7 +5,7 @@ use std::io::Write;
 use byteorder::{ByteOrder, NativeEndian};
 
 use Result;
-use phy::{self, DeviceCapabilities, Device};
+use phy::{self, DeviceCapabilities, Device, Medium};
 use time::Instant;
 
 enum_with_unknown! {
@@ -157,6 +157,10 @@ impl<'a, D, S> Device<'a> for PcapWriter<D, S>
         lower.transmit().map(|token| {
             TxToken { token, sink: sink.clone(), mode: mode }
         })
+    }
+
+    fn medium(&self) -> Medium {
+        self.lower.medium()
     }
 }
 
