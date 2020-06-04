@@ -10,7 +10,8 @@ and implementations of it:
   * _adapters_ [RawSocket](struct.RawSocket.html) and
     [TapInterface](struct.TapInterface.html), to transmit and receive frames
     on the host OS.
-
+*/
+#![cfg_attr(feature = "ethernet", doc = r##"
 # Examples
 
 An implementation of the [Device](trait.Device.html) trait for a simple hardware
@@ -86,7 +87,7 @@ impl<'a> phy::TxToken for StmPhyTxToken<'a> {
     }
 }
 ```
-*/
+"##)]
 
 use Result;
 use time::Instant;
@@ -94,29 +95,37 @@ use time::Instant;
 #[cfg(all(any(feature = "phy-raw_socket", feature = "phy-tap_interface"), unix))]
 mod sys;
 
+#[cfg(feature = "ethernet")]
 mod tracer;
+#[cfg(feature = "ethernet")]
 mod fault_injector;
+#[cfg(feature = "ethernet")]
 mod fuzz_injector;
+#[cfg(feature = "ethernet")]
 mod pcap_writer;
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod loopback;
-#[cfg(all(feature = "phy-raw_socket", unix))]
+#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", unix))]
 mod raw_socket;
-#[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", target_os = "linux"))]
 mod tap_interface;
 
 #[cfg(all(any(feature = "phy-raw_socket", feature = "phy-tap_interface"), unix))]
 pub use self::sys::wait;
 
+#[cfg(feature = "ethernet")]
 pub use self::tracer::Tracer;
+#[cfg(feature = "ethernet")]
 pub use self::fault_injector::FaultInjector;
+#[cfg(feature = "ethernet")]
 pub use self::fuzz_injector::{Fuzzer, FuzzInjector};
+#[cfg(feature = "ethernet")]
 pub use self::pcap_writer::{PcapLinkType, PcapMode, PcapSink, PcapWriter};
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use self::loopback::Loopback;
-#[cfg(all(feature = "phy-raw_socket", unix))]
+#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", unix))]
 pub use self::raw_socket::RawSocket;
-#[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", target_os = "linux"))]
 pub use self::tap_interface::TapInterface;
 
 #[cfg(feature = "ethernet")]
@@ -228,6 +237,7 @@ pub enum Medium {
     /// and interfaces using it must do neighbor discovery via ARP or NDISC.
     ///
     /// Examples of devices of this type are Ethernet, WiFi (802.11), Linux `tap`, and VPNs in tap (layer 2) mode.
+    #[cfg(feature = "ethernet")]
     Ethernet,
 
     /// IP medium. Devices of this type send and receive IP frames, without an

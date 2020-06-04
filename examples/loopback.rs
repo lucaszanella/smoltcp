@@ -18,7 +18,7 @@ mod utils;
 use core::str;
 use smoltcp::phy::{Loopback, Medium};
 use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr};
-use smoltcp::iface::{NeighborCache, EthernetInterfaceBuilder};
+use smoltcp::iface::{NeighborCache, InterfaceBuilder};
 use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
 use smoltcp::time::{Duration, Instant};
 
@@ -92,7 +92,7 @@ fn main() {
     let mut neighbor_cache = NeighborCache::new(&mut neighbor_cache_entries[..]);
 
     let mut ip_addrs = [IpCidr::new(IpAddress::v4(127, 0, 0, 1), 8)];
-    let mut iface = EthernetInterfaceBuilder::new(device)
+    let mut iface = InterfaceBuilder::new(device)
             .ethernet_addr(EthernetAddress::default())
             .neighbor_cache(neighbor_cache)
             .ip_addrs(ip_addrs)
