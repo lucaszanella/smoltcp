@@ -11,7 +11,7 @@ mod imp;
 
 #[cfg(all(feature = "phy-raw_socket", target_os = "linux"))]
 pub mod raw_socket;
-#[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), unix))]
+#[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), not(target_os = "android"), unix))]
 pub mod bpf;
 #[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
 pub mod tap_interface;
@@ -20,7 +20,7 @@ pub mod tun_interface;
 
 #[cfg(all(feature = "phy-raw_socket", target_os = "linux"))]
 pub use self::raw_socket::RawSocketDesc;
-#[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), unix))]
+#[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), not(target_os = "android"), unix))]
 pub use self::bpf::BpfDevice as RawSocketDesc;
 #[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
 pub use self::tap_interface::TapInterfaceDesc;
@@ -63,7 +63,7 @@ struct ifreq {
     ifr_data: libc::c_int /* ifr_ifindex or ifr_mtu */
 }
 
-#[cfg(all(any(feature = "phy-tap_interface", feature = "phy-raw_socket"), unix))]
+#[cfg(all(any(feature = "phy-tap_interface", feature = "phy-raw_socket"), not(target_os = "android"), unix))]
 fn ifreq_for(name: &str) -> ifreq {
     let mut ifreq = ifreq {
         ifr_name: [0; libc::IF_NAMESIZE],
