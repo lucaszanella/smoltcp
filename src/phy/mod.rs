@@ -105,11 +105,11 @@ mod fuzz_injector;
 mod pcap_writer;
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod loopback;
-#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", not(target_os = "android"), unix))]
+#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", unix))]
 mod raw_socket;
-#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", any(target_os = "linux", target_os = "android")))]
 mod tap_interface;
-#[cfg(all(feature = "phy-tun_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tun_interface", any(target_os = "linux", target_os = "android")))]
 mod tun_interface;
 
 #[cfg(all(any(feature = "phy-raw_socket", feature = "phy-tap_interface"), unix))]
@@ -125,11 +125,11 @@ pub use self::fuzz_injector::{Fuzzer, FuzzInjector};
 pub use self::pcap_writer::{PcapLinkType, PcapMode, PcapSink, PcapWriter};
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use self::loopback::Loopback;
-#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", not(target_os = "android"), unix))]
+#[cfg(all(feature = "ethernet", feature = "phy-raw_socket", unix))]
 pub use self::raw_socket::RawSocket;
-#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "ethernet", feature = "phy-tap_interface", any(target_os = "linux", target_os = "android")))]
 pub use self::tap_interface::TapInterface;
-#[cfg(all(feature = "phy-tun_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tun_interface", any(target_os = "linux", target_os = "android")))]
 pub use self::tun_interface::TunInterface;
 
 

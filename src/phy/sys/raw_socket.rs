@@ -46,9 +46,14 @@ impl RawSocketDesc {
         };
 
         unsafe {
+            #[cfg(all(any(target_os = "linux", target_os = "android"), not(any(target_arch = "arm", target_arch = "x86"))))]
             let res = libc::bind(self.lower,
                                  &sockaddr as *const libc::sockaddr_ll as *const libc::sockaddr,
                                  mem::size_of::<libc::sockaddr_ll>() as u32);
+            #[cfg(all(any(target_os = "linux", target_os = "android"), any(target_arch = "arm", target_arch = "x86")))]
+            let res = libc::bind(self.lower,
+                                &sockaddr as *const libc::sockaddr_ll as *const libc::sockaddr,
+                                mem::size_of::<libc::sockaddr_ll>() as i32);
             if res == -1 { return Err(io::Error::last_os_error()) }
         }
 

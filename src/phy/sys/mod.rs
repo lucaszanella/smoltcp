@@ -5,26 +5,26 @@ use std::{mem, ptr, io};
 use std::os::unix::io::RawFd;
 use time::Duration;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 #[path = "linux.rs"]
 mod imp;
 
-#[cfg(all(feature = "phy-raw_socket", target_os = "linux"))]
+#[cfg(all(feature = "phy-raw_socket", any(target_os = "linux", target_os = "android")))]
 pub mod raw_socket;
 #[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), not(target_os = "android"), unix))]
 pub mod bpf;
-#[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tap_interface", any(target_os = "linux",target_os = "android")))]
 pub mod tap_interface;
-#[cfg(all(feature = "phy-tun_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tun_interface", any(target_os = "linux",target_os = "android")))]
 pub mod tun_interface;
 
-#[cfg(all(feature = "phy-raw_socket", target_os = "linux"))]
+#[cfg(all(feature = "phy-raw_socket", any(target_os = "linux", target_os = "android")))]
 pub use self::raw_socket::RawSocketDesc;
 #[cfg(all(feature = "phy-raw_socket", not(target_os = "linux"), not(target_os = "android"), unix))]
 pub use self::bpf::BpfDevice as RawSocketDesc;
-#[cfg(all(feature = "phy-tap_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tap_interface", any(target_os = "linux",target_os = "android")))]
 pub use self::tap_interface::TapInterfaceDesc;
-#[cfg(all(feature = "phy-tun_interface", target_os = "linux"))]
+#[cfg(all(feature = "phy-tun_interface", any(target_os = "linux",target_os = "android")))]
 pub use self::tun_interface::TunInterfaceDesc;
 
 /// Wait until given file descriptor becomes readable, but no longer than given timeout.
@@ -63,7 +63,7 @@ struct ifreq {
     ifr_data: libc::c_int /* ifr_ifindex or ifr_mtu */
 }
 
-#[cfg(all(any(feature = "phy-tap_interface", feature = "phy-raw_socket"), not(target_os = "android"), unix))]
+#[cfg(all(any(feature = "phy-tap_interface", feature = "phy-raw_socket"), unix))]
 fn ifreq_for(name: &str) -> ifreq {
     let mut ifreq = ifreq {
         ifr_name: [0; libc::IF_NAMESIZE],
@@ -75,7 +75,7 @@ fn ifreq_for(name: &str) -> ifreq {
     ifreq
 }
 
-#[cfg(all(target_os = "linux", any(feature = "phy-tap_interface", feature = "phy-raw_socket")))]
+#[cfg(all(any(target_os = "linux", target_os = "android"), any(feature = "phy-tap_interface", feature = "phy-raw_socket")))]
 fn ifreq_ioctl(lower: libc::c_int, ifreq: &mut ifreq,
                cmd: libc::c_ulong) -> io::Result<libc::c_int> {
     unsafe {
